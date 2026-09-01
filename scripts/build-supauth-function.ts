@@ -1,21 +1,24 @@
 #!/usr/bin/env bun
 
-import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const authServerDir = resolve(root, 'packages/auth-server');
 const entrypoint = resolve(authServerDir, 'src/supacloud-function.ts');
 const outdir = resolve(authServerDir, 'dist/supacloud-function');
 
-function resolveRuntimeSafeEntry(packageName: string, entrypointName: string) {
+function resolveRuntimeSafeEntry(packageName: string, entrypointName?: string) {
   try {
-    return Bun.resolveSync(`${packageName}/${entrypointName}`, authServerDir);
+    return Bun.resolveSync(entrypointName ? `${packageName}/${entrypointName}` : packageName, authServerDir);
   } catch (error) {
     throw new Error(
       `无法解析 ${packageName}/${entrypointName}（基准目录：${authServerDir}）：${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
+
+const fileTypeEntry = resolveRuntimeSafeEntry('file-type');
 
 const build = await Bun.build({
   entrypoints: [entrypoint],
@@ -28,8 +31,23 @@ const build = await Bun.build({
       name: 'supauth-edge-runtime-safe-dependencies',
       setup(builder) {
         builder.onResolve({ filter: /^file-type$/ }, () => {
-          // Elysia 只使用 Blob/内存类型检测；core 入口不会引入 Edge Runtime 禁止的文件系统模块。
-          return { path: resolveRuntimeSafeEntry('file-type', 'core') };
+          // Elysia 只使用 Blob/内存类型检测；file-type@22 的主入口不静态引入文件系统模块。
+          return { path: fileTypeEntry, namespace: 'supauth-file-type' };
+        });
+        builder.onLoad({ filter: /.*/, namespace: 'supauth-file-type' }, (args) => {
+          const source = readFileSync(args.path, 'utf8');
+          const runtimeImport = 'function importAtRuntime(specifier) {\n\treturn import(specifier);\n}';
+          if (!source.includes(runtimeImport)) {
+            throw new Error('file-type 主入口结构已变化，无法安全禁用 Node 文件系统动态导入');
+          }
+          return {
+            contents: source.replace(
+              runtimeImport,
+              "function importAtRuntime() {\n\treturn Promise.reject(new Error('Edge Runtime 不支持 file-type 的文件系统入口'));\n}",
+            ),
+            loader: 'js',
+            resolveDir: dirname(args.path),
+          };
         });
         builder.onResolve({ filter: /^fflate$/ }, () => {
           return { path: resolveRuntimeSafeEntry('fflate', 'browser') };
