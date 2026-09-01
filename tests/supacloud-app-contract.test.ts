@@ -124,7 +124,7 @@ describe('SupAuth SupaCloud app contract', () => {
 
     expect(buildScript).toContain("resolveRuntimeSafeEntry('file-type')");
     expect(buildScript).not.toContain("resolveRuntimeSafeEntry('file-type', 'core')");
-    expect(buildScript).toContain('无法从 file-type 入口移除 Node 文件加载动态导入');
+    expect(buildScript).toContain('Edge Runtime 不支持 file-type 的文件系统入口');
   });
 
   it('declares SupaCloud-owned management domains and managed jobs', () => {
