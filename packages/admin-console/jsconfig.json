@@ -3,6 +3,7 @@
 	"compilerOptions": {
 		"allowJs": true,
 		"checkJs": false,
+		"types": ["@types/bun"],
 		"moduleResolution": "bundler"
 	}
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias

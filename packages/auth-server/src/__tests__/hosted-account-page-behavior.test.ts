@@ -250,16 +250,17 @@ async function createHarness(
     }
     return jsonResponse({ success: true, branding: options.brandingPayload ?? null });
   };
-  const context = {
-    Headers, Promise, Response, TypeError, URL, console, document, fetch: publicFetch,
-    globalThis: {} as Record<string, unknown>, window,
-    brand: document.getElementById('brand'),
-  };
-  context.globalThis = context;
-  const initialization = vm.runInNewContext(inlineAccountScript(), context);
-  await initialization;
-  await Promise.resolve();
-  const pageApi = (context as unknown as {
+ const context = {
+   Headers, Promise, Response, TypeError, URL, console, document, fetch: publicFetch,
+   globalThis: {} as Record<string, unknown>, window,
+   brand: document.getElementById('brand'),
+ };
+ context.globalThis = context;
+ const initialization = vm.runInNewContext(inlineAccountScript(), context);
+ await initialization;
+  await Bun.sleep(10);
+ await Promise.resolve();
+ const pageApi = (context as unknown as {
     __accountPage: {
       accountFetch: (path: string) => Promise<unknown>;
       validateExternalDeleteAccountUrl: (urlInput: unknown) => { ok: boolean; url?: string | null };

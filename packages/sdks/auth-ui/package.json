@@ -37,7 +37,7 @@
     "@supauth/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.0",
+    "@types/bun": "^1.4.0",
     "typescript": "^5.8.0"
   }
 }

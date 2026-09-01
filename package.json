@@ -32,11 +32,11 @@
     "capacity:baseline": "bun run scripts/capacity-baseline.ts"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "2.110.9",
-    "@supacloud/js": "0.21.0",
-    "@types/bun": "^1.2.0",
+    "@supabase/supabase-js": "^2.112.4",
+    "@supacloud/js": "^0.23.2",
+    "@types/bun": "^1.4.0",
     "es-module-lexer": "2.3.1",
-    "pinyin-pro": "^3.28.1",
+    "pinyin-pro": "^3.29.3",
     "typescript": "^5.8.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
