@@ -44,6 +44,7 @@ describe('Admin Console source-of-truth contract', () => {
   });
 
   it('fails closed when the retired root Vite entry is loaded', async () => {
+    // @ts-expect-error The retired JS entry is intentionally a declaration-free throwing sentinel.
     await expect(import('../vite.config.js')).rejects.toThrow(rootViteDeprecation);
   });
 });

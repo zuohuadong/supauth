@@ -108,15 +108,30 @@ describe('Supabase claims compatibility contract', () => {
     expect(sessionPreparation).toContain('verifiedRuntimeVersion(runtimeUrl, expectedCompatVersion)');
     expect(sessionPreparation).toContain('runtimeVersion === currentCompatVersion');
     expect(sessionPreparation).toContain("new Set(['v2.192.0', currentCompatVersion])");
-    expect(sessionPreparation).toContain("requiredEnv('SUPABASE_SERVICE_ROLE_KEY')");
+    expect(sessionPreparation).toContain('requiredSupabaseAdminKey()');
+    expect(sessionPreparation).toContain('requiredSupabasePublicKey()');
     expect(sessionPreparation.indexOf('createCompatibilityUser(')).toBeLessThan(
       sessionPreparation.indexOf('supabase.auth.signInWithPassword'),
     );
     for (const workflowPath of ['.github/workflows/ci.yml', '.github/workflows/live-compat.yml']) {
       const workflow = readFileSync(workflowPath, 'utf8');
+      expect(workflow).toContain('SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}');
+      expect(workflow).toContain('SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}');
       expect(workflow).toContain('SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}');
       expect(workflow).toContain('if: always()');
-      expect(workflow).toContain('bun run scripts/cleanup-supabase-auth-compat-session.ts');
+      expect(workflow).toContain('bun --use-system-ca run scripts/cleanup-supabase-auth-compat-session.ts');
+      expect(workflow).toContain(
+        'SUPABASE_FULLSTACK_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_PUBLISHABLE_KEY }}',
+      );
+      expect(workflow).toContain(
+        'SUPABASE_FULLSTACK_ANON_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_ANON_KEY }}',
+      );
+      expect(workflow).toContain(
+        'SUPABASE_FULLSTACK_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SECRET_KEY }}',
+      );
+      expect(workflow).toContain(
+        'SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SERVICE_ROLE_KEY }}',
+      );
     }
   });
 
@@ -208,6 +223,12 @@ describe('Supabase claims compatibility contract', () => {
   it('runs live Supabase Auth release gates in strict mode', () => {
     const releaseGate = readFileSync('scripts/release-gate.ts', 'utf8');
     const strictEnvCount = (releaseGate.match(/REQUIRE_SUPABASE_AUTH_COMPAT:\s*'1'/g) || []).length;
+    const systemCaLiveTestCount = (
+      releaseGate.match(/'bun',\s*'--use-system-ca',\s*'test'/g) || []
+    ).length;
+    const systemCaInstalledVerifierCount = (
+      releaseGate.match(/'bun',\s*'--use-system-ca',\s*'run',\s*'scripts\/verify-supacloud-installed-app\.ts'/g) || []
+    ).length;
 
     expect(releaseGate).toContain("RUN_SUPABASE_RUNTIME_COMPAT: '1'");
     expect(releaseGate).toContain("RUN_SUPABASE_OAUTH21_COMPAT: '1'");
@@ -215,5 +236,10 @@ describe('Supabase claims compatibility contract', () => {
     expect(releaseGate).toContain("RELEASE_ENVIRONMENT === 'production'");
     expect(releaseGate).toContain('live verification requires both Supabase runtime and OAuth 2.1 compatibility suites');
     expect(strictEnvCount).toBeGreaterThanOrEqual(2);
+    expect(systemCaLiveTestCount).toBe(2);
+    expect(systemCaInstalledVerifierCount).toBe(1);
+    expect(releaseGate).not.toMatch(
+      /SUPABASE_FULLSTACK_(?:PUBLISHABLE|ANON|SECRET|SERVICE_ROLE)_KEY:\s*process\.env/,
+    );
   });
 });

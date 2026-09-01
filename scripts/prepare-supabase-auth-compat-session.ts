@@ -3,15 +3,16 @@
 import { appendFileSync } from 'node:fs';
 import { createSupaCloudOAuthFetch } from '@supacloud/js';
 import { createClient } from '@supabase/supabase-js';
+import { requiredSupabaseAdminKey, requiredSupabasePublicKey } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
 const clientId = requiredEnv('OAUTH21_CLIENT_ID');
 const redirectUri = requiredEnv('OAUTH21_REDIRECT_URI');
-const anonKey = requiredEnv('SUPABASE_ANON_KEY');
-const serviceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+const publicKey = requiredSupabasePublicKey();
+const adminKey = requiredSupabaseAdminKey();
 const credentials = ephemeralCredentials(requiredEnv('SUPABASE_TEST_EMAIL'));
 const githubEnv = requiredEnv('GITHUB_ENV');
-const currentCompatVersion = 'v2.195.0';
+const currentCompatVersion = 'v2.196.0';
 const supportedCompatVersions = new Set(['v2.192.0', currentCompatVersion]);
 const expectedCompatVersion = process.env.SUPABASE_AUTH_COMPAT_VERSION?.trim() || currentCompatVersion;
 const runtimeVersion = await verifiedRuntimeVersion(runtimeUrl, expectedCompatVersion);
@@ -41,7 +42,7 @@ const authorizationPageUrl = new URL(authorizationLocation, runtimeUrl);
 const authorizationId = authorizationPageUrl.searchParams.get('authorization_id');
 if (!authorizationId) throw new Error('OAuth authorization redirect did not include authorization_id');
 
-const supabase = createClient(runtimeUrl, anonKey, {
+const supabase = createClient(runtimeUrl, publicKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
@@ -49,7 +50,7 @@ const supabase = createClient(runtimeUrl, anonKey, {
   },
 });
 
-await createCompatibilityUser(runtimeUrl, serviceRoleKey, credentials, githubEnv);
+await createCompatibilityUser(runtimeUrl, adminKey, credentials, githubEnv);
 const signIn = await supabase.auth.signInWithPassword(credentials);
 if (signIn.error || !signIn.data.session) {
   throw new Error(`Supabase Auth compatibility sign-in failed: ${signIn.error?.message || 'missing session'}`);
@@ -99,7 +100,7 @@ if (!tokenResponse.ok || !tokens?.access_token || !tokens.refresh_token) {
 
 console.log(`::add-mask::${tokens.access_token}`);
 console.log(`::add-mask::${tokens.refresh_token}`);
-const oauthClient = createClient(runtimeUrl, anonKey, {
+const oauthClient = createClient(runtimeUrl, publicKey, {
   global: {
     fetch: createSupaCloudOAuthFetch({
       clientId,
@@ -193,11 +194,11 @@ function ephemeralCredentials(baseEmail: string): CompatibilityCredentials {
 
 async function createCompatibilityUser(
   runtimeUrl: string,
-  serviceRoleKey: string,
+  adminKey: string,
   credentials: CompatibilityCredentials,
   githubEnv: string,
 ): Promise<void> {
-  const admin = createClient(runtimeUrl, serviceRoleKey, {
+  const admin = createClient(runtimeUrl, adminKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
   const created = await admin.auth.admin.createUser({ ...credentials, email_confirm: true });

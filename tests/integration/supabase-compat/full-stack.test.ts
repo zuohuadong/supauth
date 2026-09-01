@@ -8,6 +8,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js';
+import { resolveSupabaseAdminKey, resolveSupabasePublicKey } from '../../../scripts/supabase-compat-env.js';
 import { CleanupStack } from './cleanup.js';
 
 const STRICT_COMPAT = process.env.REQUIRE_SUPABASE_AUTH_COMPAT === '1';
@@ -15,10 +16,8 @@ const RUN_FULL_STACK = STRICT_COMPAT || process.env.RUN_SUPABASE_FULL_STACK_COMP
 const RUNTIME_URL = trimTrailingSlash(
   process.env.SUPABASE_FULLSTACK_URL || process.env.OAUTH_RUNTIME_URL || '',
 );
-const ANON_KEY = process.env.SUPABASE_FULLSTACK_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
-const SERVICE_ROLE_KEY = process.env.SUPABASE_FULLSTACK_SERVICE_ROLE_KEY
-  || process.env.SUPABASE_SERVICE_ROLE_KEY
-  || '';
+const PUBLIC_KEY = resolveSupabasePublicKey(process.env, { fullStack: true });
+const ADMIN_KEY = resolveSupabaseAdminKey(process.env, { fullStack: true });
 const TEST_PASSWORD = process.env.SUPABASE_FULLSTACK_TEST_PASSWORD
   || process.env.SUPABASE_TEST_PASSWORD
   || 'GotrueCompat123!';
@@ -31,8 +30,8 @@ const RUN_ID = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
 if (STRICT_COMPAT) {
   assertRequiredValues({
     SUPABASE_FULLSTACK_URL: RUNTIME_URL,
-    SUPABASE_FULLSTACK_ANON_KEY: ANON_KEY,
-    SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: SERVICE_ROLE_KEY,
+    SUPABASE_FULLSTACK_PUBLIC_KEY: PUBLIC_KEY,
+    SUPABASE_FULLSTACK_ADMIN_KEY: ADMIN_KEY,
   });
 }
 
@@ -56,7 +55,7 @@ describe('Stock GoTrue token compatibility with Supabase services', () => {
 
   beforeAll(async () => {
     if (!RUN_FULL_STACK) return;
-    adminClient = supabaseClient(SERVICE_ROLE_KEY);
+    adminClient = supabaseClient(ADMIN_KEY);
     primary = await createAuthenticatedFixture(adminClient, 'primary', cleanup);
     secondary = await createAuthenticatedFixture(adminClient, 'secondary', cleanup);
   }, TEST_TIMEOUT_MS);
@@ -127,7 +126,7 @@ describe('Stock GoTrue token compatibility with Supabase services', () => {
 
     const rejected = await fetch(`${RUNTIME_URL}/functions/v1/${FUNCTION_NAME}`, {
       method: 'POST',
-      headers: { apikey: ANON_KEY, authorization: 'Bearer invalid.jwt.token' },
+      headers: { apikey: PUBLIC_KEY, authorization: 'Bearer invalid.jwt.token' },
     });
     expect(rejected.status).toBe(401);
   });
@@ -151,7 +150,7 @@ async function createAuthenticatedFixture(
   cleanup: CleanupStack,
 ): Promise<AuthenticatedFixture> {
   const compatibilityUser = await createCompatibilityUser(adminClient, label, cleanup);
-  const client = supabaseClient(ANON_KEY);
+  const client = supabaseClient(PUBLIC_KEY);
   const signedIn = await client.auth.signInWithPassword({
     email: compatibilityUser.email,
     password: TEST_PASSWORD,

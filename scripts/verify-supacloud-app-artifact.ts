@@ -357,7 +357,10 @@ interface ImportMetaRequireUsage {
   hasComputedCall: boolean;
 }
 
-function parseFunctionBundleModuleImports(result: VerificationResult, functionSource: string): ModuleImport[] | null {
+function parseFunctionBundleModuleImports(
+  result: VerificationResult,
+  functionSource: string,
+): readonly ModuleImport[] | null {
   try {
     initModuleLexerSync();
     return parseModuleImports(functionSource)[0];
@@ -420,7 +423,7 @@ function runtimeImportAllowed(path: string) {
 function assertSupportedImportMetaRequires(
   result: VerificationResult,
   functionSource: string,
-  moduleImports: ModuleImport[],
+  moduleImports: readonly ModuleImport[],
 ) {
   const importMetaEntries = moduleImports.filter((entry) => entry.d === -2 && entry.t === 3);
   for (const imported of importMetaEntries) {
@@ -444,7 +447,7 @@ function assertSupportedImportMetaRequires(
 function assertNoComputedDynamicImports(
   result: VerificationResult,
   functionSource: string,
-  moduleImports: ModuleImport[],
+  moduleImports: readonly ModuleImport[],
 ) {
   if (moduleImports.some((imported) => (
     imported.d >= 0 && !isDynamicImportLiteral(functionSource, imported.s, imported.e)

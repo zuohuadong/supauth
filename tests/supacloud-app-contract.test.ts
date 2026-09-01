@@ -119,6 +119,14 @@ describe('SupAuth SupaCloud app contract', () => {
     expect(buildScript).toContain("resolve(deploymentBundleDir, 'admin-console/build')");
   });
 
+  it('builds file-type 22 through an Edge-safe root-entry transform', () => {
+    const buildScript = readFileSync('scripts/build-supauth-function.ts', 'utf8');
+
+    expect(buildScript).toContain("resolveRuntimeSafeEntry('file-type')");
+    expect(buildScript).not.toContain("resolveRuntimeSafeEntry('file-type', 'core')");
+    expect(buildScript).toContain('无法从 file-type 入口移除 Node 文件加载动态导入');
+  });
+
   it('declares SupaCloud-owned management domains and managed jobs', () => {
     const manifest = createSupacloudAppManifest({
       functionBundle: 'function.js',

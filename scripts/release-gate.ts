@@ -91,6 +91,7 @@ if (runLive) {
   if (runSupabaseRuntimeCompat) {
     run([
       'bun',
+      '--use-system-ca',
       'test',
       'tests/integration/supabase-compat/supabase-js.test.ts',
       'tests/integration/supabase-compat/full-stack.test.ts',
@@ -103,15 +104,12 @@ if (runLive) {
         OAUTH_RUNTIME_URL: process.env.OAUTH_RUNTIME_URL || installedRuntimeUrl,
         MANAGEMENT_URL: process.env.MANAGEMENT_URL || `${installedBaseUrl}/api`,
         SUPABASE_FULLSTACK_URL: process.env.SUPABASE_FULLSTACK_URL || installedRuntimeUrl,
-        SUPABASE_FULLSTACK_ANON_KEY: process.env.SUPABASE_FULLSTACK_ANON_KEY || process.env.SUPABASE_ANON_KEY,
-        SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: process.env.SUPABASE_FULLSTACK_SERVICE_ROLE_KEY
-          || process.env.SUPABASE_SERVICE_ROLE_KEY,
       },
     });
   }
 
   if (runSupabaseOauth21Compat) {
-    run(['bun', 'test', 'tests/integration/supabase-compat/oauth21.test.ts'], {
+    run(['bun', '--use-system-ca', 'test', 'tests/integration/supabase-compat/oauth21.test.ts'], {
       env: {
         REQUIRE_SUPABASE_AUTH_COMPAT: '1',
         RUN_SUPABASE_OAUTH21_COMPAT: '1',
@@ -123,6 +121,7 @@ if (runLive) {
   supacloudInstalledAppVerification = `${artifactDir}/supacloud-installed-app-verification.json`;
   run([
     'bun',
+    '--use-system-ca',
     'run',
     'scripts/verify-supacloud-installed-app.ts',
     '--artifact-dir',

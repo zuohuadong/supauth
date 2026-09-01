@@ -66,12 +66,12 @@ describe('live clock skew prerequisite', () => {
   it('runs before both strict live compatibility suites', () => {
     for (const workflowPath of ['.github/workflows/ci.yml', '.github/workflows/live-compat.yml']) {
       const workflow = readFileSync(workflowPath, 'utf8');
-      const prerequisite = workflow.indexOf('bun run scripts/check-live-clock-skew.ts');
+      const prerequisite = workflow.indexOf('bun --use-system-ca run scripts/check-live-clock-skew.ts');
       const strictSuite = workflow.indexOf('bun run test:supabase-auth-compat');
       expect(prerequisite).toBeGreaterThan(-1);
       expect(prerequisite).toBeLessThan(strictSuite);
       expect(workflow).toContain('OAUTH_RUNTIME_URL: ${{ secrets.LIVE_SUPABASE_AUTH_URL || secrets.LIVE_OAUTH_RUNTIME_URL }}');
-      const sessionPreparation = workflow.indexOf('bun run scripts/prepare-supabase-auth-compat-session.ts');
+      const sessionPreparation = workflow.indexOf('bun --use-system-ca run scripts/prepare-supabase-auth-compat-session.ts');
       if (sessionPreparation > -1) expect(prerequisite).toBeLessThan(sessionPreparation);
     }
   });

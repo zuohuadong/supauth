@@ -91,7 +91,7 @@ async function seedAuthorizationState(): Promise<void> {
 async function withClaims<T>(
   claims: Record<string, unknown>,
   execute: (transaction: postgres.TransactionSql) => Promise<T>,
-): Promise<T> {
+) {
   return sql.begin(async transaction => {
     await transaction.unsafe('SET LOCAL ROLE authenticated');
     await transaction`SELECT set_config('request.jwt.claims', ${JSON.stringify(claims)}, TRUE)`;

@@ -175,7 +175,16 @@ function inlineAccountScript() {
   const scripts = [...accountHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
   const source = scripts.at(-1)?.[1];
   if (!source) throw new Error('Hosted account inline script was not found.');
-  return `${source}\nglobalThis.__accountPage = { accountFetch, validateExternalDeleteAccountUrl };`;
+  const initializationMarker = '    (async () => {';
+  const initializationMatches = source.split(initializationMarker).length - 1;
+  if (initializationMatches !== 1) {
+    throw new Error(`Expected one hosted account initialization IIFE, found ${initializationMatches}.`);
+  }
+  const instrumentedSource = source.replace(
+    initializationMarker,
+    '    globalThis.__accountPageReady = (async () => {',
+  );
+  return `${instrumentedSource}\nglobalThis.__accountPage = { accountFetch, validateExternalDeleteAccountUrl };`;
 }
 
 function jsonResponse(payload: unknown, status = 200) {
@@ -254,12 +263,10 @@ async function createHarness(
    Headers, Promise, Response, TypeError, URL, console, document, fetch: publicFetch,
    globalThis: {} as Record<string, unknown>, window,
    brand: document.getElementById('brand'),
- };
- context.globalThis = context;
- const initialization = vm.runInNewContext(inlineAccountScript(), context);
- await initialization;
-  await Bun.sleep(10);
- await Promise.resolve();
+  };
+  context.globalThis = context;
+  vm.runInNewContext(inlineAccountScript(), context);
+  await (context as unknown as { __accountPageReady: Promise<void> }).__accountPageReady;
  const pageApi = (context as unknown as {
     __accountPage: {
       accountFetch: (path: string) => Promise<unknown>;

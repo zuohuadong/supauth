@@ -10,13 +10,15 @@
  *   RUN_SUPABASE_RUNTIME_COMPAT=1
  *   OAUTH_RUNTIME_URL=https://api.example.com
  *   MANAGEMENT_URL=https://auth.example.com/api
- *   SUPABASE_ANON_KEY=<anon-jwt>
+ *   SUPABASE_PUBLISHABLE_KEY=<sb_publishable-key> (or legacy SUPABASE_ANON_KEY)
+ *   SUPABASE_SECRET_KEY=<sb_secret-key> (or legacy SUPABASE_SERVICE_ROLE_KEY)
  *   SUPABASE_TEST_EMAIL=<test-user@example.com>
  *   SUPABASE_TEST_PASSWORD=<password>
  */
 
 import { describe, it, expect } from 'bun:test';
 import { createClient } from '@supabase/supabase-js';
+import { resolveSupabaseAdminKey, resolveSupabasePublicKey } from '../../../scripts/supabase-compat-env.js';
 import {
   SUPABASE_METADATA_CLAIMS,
   SUPABASE_REQUIRED_CLAIMS,
@@ -29,8 +31,8 @@ const MANAGEMENT_PORT = parseInt(process.env.PORT || '4010', 10);
 const MANAGEMENT_URL = trimTrailingSlash(process.env.MANAGEMENT_URL || `http://localhost:${MANAGEMENT_PORT}`);
 const STRICT_COMPAT = process.env.REQUIRE_SUPABASE_AUTH_COMPAT === '1';
 const RUN_LIVE = STRICT_COMPAT || process.env.RUN_SUPABASE_RUNTIME_COMPAT === '1' || process.env.RUN_SUPABASE_OAUTH21_COMPAT === '1';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_PUBLIC_KEY = resolveSupabasePublicKey();
+const SUPABASE_ADMIN_KEY = resolveSupabaseAdminKey();
 const TEST_EMAIL = process.env.SUPABASE_TEST_EMAIL || '';
 const TEST_PASSWORD = process.env.SUPABASE_TEST_PASSWORD || '';
 
@@ -41,26 +43,23 @@ function liveIt(name: string, fn: LiveTestHandler) {
 }
 
 function supabaseJsIt(name: string, fn: LiveTestHandler) {
-  if (RUN_LIVE && SUPABASE_ANON_KEY) it(name, fn);
+  if (RUN_LIVE && SUPABASE_PUBLIC_KEY) it(name, fn);
 }
 
 function authIt(name: string, fn: LiveTestHandler) {
-  if (RUN_LIVE && SUPABASE_ANON_KEY && TEST_EMAIL && TEST_PASSWORD) it(name, fn);
+  if (RUN_LIVE && SUPABASE_PUBLIC_KEY && TEST_EMAIL && TEST_PASSWORD) it(name, fn);
 }
 
 if (STRICT_COMPAT) {
-  assertRequiredEnv([
-    'OAUTH_RUNTIME_URL',
-    'MANAGEMENT_URL',
-    'SUPABASE_ANON_KEY',
-    'SUPABASE_SERVICE_ROLE_KEY',
-    'SUPABASE_TEST_EMAIL',
-    'SUPABASE_TEST_PASSWORD',
-  ]);
+  assertRequiredEnv(['OAUTH_RUNTIME_URL', 'MANAGEMENT_URL', 'SUPABASE_TEST_EMAIL', 'SUPABASE_TEST_PASSWORD']);
+  assertRequiredValues({
+    SUPABASE_PUBLIC_KEY,
+    SUPABASE_ADMIN_KEY,
+  });
 }
 
 function supabaseClient() {
-  return createClient(RUNTIME_URL, SUPABASE_ANON_KEY, {
+  return createClient(RUNTIME_URL, SUPABASE_PUBLIC_KEY, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -197,7 +196,7 @@ describe('Supabase runtime compatibility', () => {
       expect(assurance.data?.currentLevel).toBe('aal2');
 
       if (versionAtLeast(gotrueVersion, [2, 193, 0])) {
-        const adminClient = createClient(RUNTIME_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        const adminClient = createClient(RUNTIME_URL, SUPABASE_ADMIN_KEY, {
           auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
         });
         const deletion = await adminClient.auth.admin.mfa.deleteFactor({
@@ -303,6 +302,13 @@ function trimTrailingSlash(value: string): string {
 
 function assertRequiredEnv(names: string[]) {
   const missing = names.filter((name) => !process.env[name]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required Supabase Auth compatibility env: ${missing.join(', ')}`);
+  }
+}
+
+function assertRequiredValues(values: Record<string, string>) {
+  const missing = Object.entries(values).filter(([, value]) => !value).map(([name]) => name);
   if (missing.length > 0) {
     throw new Error(`Missing required Supabase Auth compatibility env: ${missing.join(', ')}`);
   }

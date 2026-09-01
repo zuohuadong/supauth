@@ -49,7 +49,7 @@ describe('@supauth/authorization-core', () => {
     expect(decide(context, permission('invoice:read'))).toEqual({
       allowed: false,
       reason: 'missing_permission',
-      permission: 'invoice:read',
+      permission: permission('invoice:read'),
     });
     expect(() => assertCan(context, permission('invoice:read'))).toThrow(AuthorizationForbiddenError);
   });
@@ -69,7 +69,7 @@ describe('@supauth/authorization-core', () => {
       .rejects.toBeInstanceOf(AuthorizationUnavailableError);
 
     const context = await resolveAuthorization(request, async () => ['invoice:read', 'invoice:read']);
-    expect(context.permissions).toEqual(['invoice:read']);
+    expect(context.permissions).toEqual([permission('invoice:read')]);
     expect(Object.isFrozen(context.permissions)).toBe(true);
     expect(() => (context.permissions as unknown as string[]).push('invoice:delete')).toThrow();
   });
