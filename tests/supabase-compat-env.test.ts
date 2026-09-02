@@ -7,12 +7,12 @@ import {
 } from '../scripts/supabase-compat-env.js';
 
 describe('Supabase compatibility key selection', () => {
-  it('prefers modern publishable and service-role keys', () => {
+  it('prefers modern publishable and secret keys', () => {
     const env = {
       SUPABASE_PUBLISHABLE_KEY: 'modern-public',
       SUPABASE_ANON_KEY: 'legacy-public',
-      SUPABASE_SERVICE_ROLE_KEY: 'modern-admin',
-      SUPABASE_SECRET_KEY: 'legacy-admin',
+      SUPABASE_SECRET_KEY: 'modern-admin',
+      SUPABASE_SERVICE_ROLE_KEY: 'legacy-admin',
     };
 
     expect(resolveSupabasePublicKey(env)).toBe('modern-public');
@@ -29,10 +29,22 @@ describe('Supabase compatibility key selection', () => {
     expect(requiredSupabaseAdminKey(env)).toBe('legacy-admin');
   });
 
+  it('falls back to service-role keys when modern secret aliases are empty', () => {
+    const env = {
+      SUPABASE_SECRET_KEY: '  ',
+      SUPABASE_SERVICE_ROLE_KEY: 'legacy-admin',
+      SUPABASE_FULLSTACK_SECRET_KEY: '',
+      SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: 'fixture-legacy-admin',
+    };
+
+    expect(resolveSupabaseAdminKey(env)).toBe('legacy-admin');
+    expect(resolveSupabaseAdminKey(env, { fullStack: true })).toBe('fixture-legacy-admin');
+  });
+
   it('prefers full-stack overrides before project-wide keys', () => {
     const env = {
       SUPABASE_FULLSTACK_PUBLISHABLE_KEY: 'fixture-public',
-      SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: 'fixture-admin',
+      SUPABASE_FULLSTACK_SECRET_KEY: 'fixture-admin',
       SUPABASE_PUBLISHABLE_KEY: 'project-public',
       SUPABASE_SECRET_KEY: 'project-admin',
     };
@@ -44,7 +56,7 @@ describe('Supabase compatibility key selection', () => {
   it('keeps fixture legacy keys ahead of project-wide modern keys', () => {
     const env = {
       SUPABASE_FULLSTACK_ANON_KEY: 'fixture-legacy-public',
-      SUPABASE_FULLSTACK_SECRET_KEY: 'fixture-legacy-admin',
+      SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: 'fixture-legacy-admin',
       SUPABASE_PUBLISHABLE_KEY: 'project-modern-public',
       SUPABASE_SECRET_KEY: 'project-modern-admin',
     };
@@ -58,7 +70,7 @@ describe('Supabase compatibility key selection', () => {
       'SUPABASE_PUBLISHABLE_KEY or SUPABASE_ANON_KEY',
     );
     expect(() => requiredSupabaseAdminKey({})).toThrow(
-      'SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY',
+      'SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY',
     );
   });
 });
