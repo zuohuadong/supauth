@@ -55,6 +55,28 @@ export function resolveManagementApiBases(baseUrl: string): string[] {
   return alternate === normalized ? [normalized] : [normalized, alternate];
 }
 
+export function resolveManagementApiBaseCandidates(
+  env: Environment = process.env,
+  runtimeUrl: string,
+): string[] {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  for (const baseUrl of [
+    env.MANAGEMENT_URL,
+    env.SUPABASE_FULLSTACK_URL,
+    env.SUPABASE_URL,
+    runtimeUrl,
+  ]) {
+    for (const candidate of resolveManagementApiBases(baseUrl ?? '')) {
+      if (!seen.has(candidate)) {
+        seen.add(candidate);
+        candidates.push(candidate);
+      }
+    }
+  }
+  return candidates;
+}
+
 export function requiredSupabasePublicKey(env: Environment = process.env): string {
   return requiredFirstNonEmpty(env, PUBLIC_KEY_NAMES);
 }

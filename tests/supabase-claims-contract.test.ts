@@ -89,6 +89,8 @@ describe('Supabase claims compatibility contract', () => {
   it('tracks OAuth scope values separately from JWT claim names and enterprise permissions', () => {
     const oauthFixture = readFileSync('tests/integration/supabase-compat/oauth21.test.ts', 'utf8');
     const sessionPreparation = readFileSync('scripts/prepare-supabase-auth-compat-session.ts', 'utf8');
+    const envHelpers = readFileSync('scripts/supabase-compat-env.ts', 'utf8');
+    const managementApiHelpers = readFileSync('scripts/supabase-management-api.ts', 'utf8');
 
     expect(SUPABASE_OAUTH_STANDARD_SCOPES).toEqual(['openid', 'email', 'profile', 'phone', 'offline_access']);
     for (const scope of SUPABASE_OAUTH_STANDARD_SCOPES) {
@@ -105,10 +107,7 @@ describe('Supabase claims compatibility contract', () => {
     expect(oauthFixture).toContain("`${RUNTIME_URL}/auth/v1/health`");
     expect(oauthFixture).toContain('assertExpectedRuntimeVersion(runtimeVersion, EXPECTED_COMPAT_VERSION)');
     expect(sessionPreparation).toContain("`${runtimeBaseUrl}/auth/v1/health`");
-    expect(sessionPreparation).toContain("const managementApiUrl = process.env.MANAGEMENT_URL?.trim().replace(/\\/+$/, '')");
-    expect(sessionPreparation).toContain("|| process.env.SUPABASE_URL?.trim().replace(/\\/+$/, '')");
-    expect(sessionPreparation).toContain("|| process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\\/+$/, '')");
-    expect(sessionPreparation).toContain('const managementApiBases = resolveManagementApiBases(managementApiUrl);');
+    expect(sessionPreparation).toContain('resolveManagementApiBaseCandidates(process.env, runtimeUrl)');
     expect(sessionPreparation).toContain('verifiedRuntimeVersion(runtimeUrl, expectedCompatVersion)');
     expect(sessionPreparation).toContain('runtimeVersion === currentCompatVersion');
     expect(sessionPreparation).toContain("new Set(['v2.192.0', currentCompatVersion])");
@@ -116,11 +115,14 @@ describe('Supabase claims compatibility contract', () => {
     expect(sessionPreparation).toContain('resolveSupabaseManagementAdminKey(process.env)');
     expect(sessionPreparation).toContain('resolveSupabaseAdminKey(process.env, { fullStack: true })');
     expect(sessionPreparation).toContain("await createCompatibilityUser(managementApiBases, requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF'), adminKey, credentials, githubEnv);");
-    expect(sessionPreparation).toContain("fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users`, {");
-    expect(sessionPreparation).toContain("fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {");
+    expect(sessionPreparation).toContain("import {\n  lookupCompatibilityUserId,\n  requestProjectAuthUser,\n} from './supabase-management-api.js';");
     expect(sessionPreparation).toContain('email_confirm: true');
-    expect(sessionPreparation).toContain('x-project-ref');
-    expect(sessionPreparation).toContain('lookupCompatibilityUserId(managementApiBases, tenantRef, adminKey, credentials.email)');
+    expect(envHelpers).toContain('resolveManagementApiBaseCandidates');
+    expect(managementApiHelpers).toContain('requestProjectAuthUser(');
+    expect(managementApiHelpers).toContain('lookupCompatibilityUserId(');
+    expect(managementApiHelpers).toContain('response.status !== 404');
+    expect(managementApiHelpers).toContain('if (managementApiBases.length === 0)');
+    expect(managementApiHelpers).toContain('Missing management API base candidates');
     expect(sessionPreparation.indexOf('createCompatibilityUser(')).toBeLessThan(
       sessionPreparation.indexOf('supabase.auth.signInWithPassword'),
     );

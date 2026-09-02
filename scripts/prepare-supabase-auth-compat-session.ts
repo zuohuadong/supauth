@@ -7,17 +7,17 @@ import {
   resolveSupabaseAdminKey,
   resolveSupabasePublicKey,
   resolveSupabaseManagementAdminKey,
-  resolveManagementApiBases,
+  resolveManagementApiBaseCandidates,
   requiredSupabaseAdminKey,
   requiredSupabasePublicKey,
 } from './supabase-compat-env.js';
+import {
+  lookupCompatibilityUserId,
+  requestProjectAuthUser,
+} from './supabase-management-api.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
-const managementApiUrl = process.env.MANAGEMENT_URL?.trim().replace(/\/+$/, '')
-  || process.env.SUPABASE_URL?.trim().replace(/\/+$/, '')
-  || process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '')
-  || runtimeUrl;
-const managementApiBases = resolveManagementApiBases(managementApiUrl);
+const managementApiBases = resolveManagementApiBaseCandidates(process.env, runtimeUrl);
 const clientId = requiredEnv('OAUTH21_CLIENT_ID');
 const redirectUri = requiredEnv('OAUTH21_REDIRECT_URI');
 const publicKey = resolveSupabasePublicKey(process.env, { fullStack: true }) || requiredSupabasePublicKey();
@@ -232,68 +232,6 @@ async function createCompatibilityUser(
     `SUPABASE_COMPAT_USER_ID=${createdUserId}`,
     '',
   ].join('\n'));
-}
-
-async function requestProjectAuthUser(
-  managementApiBases: string[],
-  tenantRef: string,
-  adminKey: string,
-  method: 'POST' | 'DELETE',
-  body?: Record<string, unknown>,
-): Promise<Response> {
-  let lastResponse: Response | null = null;
-  for (const managementApiBase of managementApiBases) {
-    const response = await fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users`, {
-      method,
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/json',
-        apikey: adminKey,
-        authorization: `Bearer ${adminKey}`,
-        'x-project-ref': tenantRef,
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    lastResponse = response;
-    if (response.status !== 404) return response;
-  }
-  return lastResponse!;
-}
-
-async function lookupCompatibilityUserId(
-  managementApiBases: string[],
-  tenantRef: string,
-  adminKey: string,
-  email: string,
-): Promise<string | null> {
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    for (const managementApiBase of managementApiBases) {
-      const response = await fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {
-        headers: {
-          accept: 'application/json',
-          apikey: adminKey,
-          authorization: `Bearer ${adminKey}`,
-          'x-project-ref': tenantRef,
-        },
-      });
-      if (response.ok) {
-        const payload = await response.json().catch(() => null) as { items?: Array<Record<string, unknown>>; users?: Array<Record<string, unknown>>; data?: Array<Record<string, unknown>> } | null;
-        const candidates = [
-          ...(Array.isArray(payload?.items) ? payload.items : []),
-          ...(Array.isArray(payload?.users) ? payload.users : []),
-          ...(Array.isArray(payload?.data) ? payload.data : []),
-        ];
-        const match = candidates.find((item) => typeof item?.id === 'string' && typeof item?.email === 'string' && item.email.toLowerCase() === email.toLowerCase());
-        if (typeof match?.id === 'string') return match.id;
-      }
-    }
-    if (attempt < 5) await delay(250);
-  }
-  return null;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function parseJsonObject(text: string): Record<string, unknown> | null {

@@ -2,11 +2,13 @@ import { describe, expect, it } from 'bun:test';
 import {
   requiredSupabaseAdminKey,
   requiredSupabasePublicKey,
+  resolveManagementApiBaseCandidates,
   resolveManagementApiBases,
   resolveSupabaseAdminKey,
   resolveSupabaseManagementAdminKey,
   resolveSupabasePublicKey,
 } from '../scripts/supabase-compat-env.js';
+import { requestProjectAuthUser } from '../scripts/supabase-management-api.js';
 
 describe('Supabase compatibility key selection', () => {
   it('prefers modern publishable and secret keys', () => {
@@ -91,6 +93,65 @@ describe('Supabase compatibility key selection', () => {
       'https://auth.example.com',
       'https://auth.example.com/api',
     ]);
+  });
+
+  it('builds ordered management API candidates from management, full-stack, root, and runtime bases', () => {
+    const env = {
+      MANAGEMENT_URL: 'https://management.example.com',
+      SUPABASE_FULLSTACK_URL: 'https://fullstack.example.com/api',
+      SUPABASE_URL: 'https://root.example.com/',
+    };
+
+    expect(resolveManagementApiBaseCandidates(env, 'https://runtime.example.com')).toEqual([
+      'https://management.example.com',
+      'https://management.example.com/api',
+      'https://fullstack.example.com/api',
+      'https://fullstack.example.com',
+      'https://root.example.com',
+      'https://root.example.com/api',
+      'https://runtime.example.com',
+      'https://runtime.example.com/api',
+    ]);
+  });
+
+  it('falls through 404s from MANAGEMENT_URL to the next candidate base', async () => {
+    const calls: Array<{ url: string; method: string }> = [];
+    const fetchImpl = async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      calls.push({ url, method: init?.method || 'GET' });
+      if (url.startsWith('https://management.example.com') || url.startsWith('https://fullstack.example.com')) {
+        return new Response('not found', { status: 404 });
+      }
+      return Response.json({ id: 'user-one', email: 'compat@example.test' });
+    };
+
+    const managementApiBases = resolveManagementApiBaseCandidates(
+      {
+        MANAGEMENT_URL: 'https://management.example.com',
+        SUPABASE_FULLSTACK_URL: 'https://fullstack.example.com',
+        SUPABASE_URL: 'https://root.example.com',
+      },
+      'https://runtime.example.com',
+    );
+
+    const response = await requestProjectAuthUser(
+      managementApiBases,
+      'test-project',
+      'admin-key',
+      'POST',
+      { email: 'compat@example.test' },
+      fetchImpl as typeof fetch,
+    );
+
+    expect(response.ok).toBe(true);
+    expect(calls.map(({ url }) => url)).toEqual([
+      'https://management.example.com/v1/projects/test-project/auth/users',
+      'https://management.example.com/api/v1/projects/test-project/auth/users',
+      'https://fullstack.example.com/v1/projects/test-project/auth/users',
+      'https://fullstack.example.com/api/v1/projects/test-project/auth/users',
+      'https://root.example.com/v1/projects/test-project/auth/users',
+    ]);
+    expect(calls.every(({ method }) => method === 'POST')).toBe(true);
   });
 
   it('fails with both accepted variable names when no key is configured', () => {
