@@ -1,20 +1,17 @@
 #!/usr/bin/env bun
 
 import { createClient } from '@supabase/supabase-js';
-import { requiredSupabaseAdminKey } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
-const adminKey = requiredSupabaseAdminKey();
+const serviceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
 const userId = process.env.SUPABASE_COMPAT_USER_ID?.trim();
 
 if (userId) {
-  const admin = createClient(runtimeUrl, adminKey, {
+  const admin = createClient(runtimeUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
   const deleted = await admin.auth.admin.deleteUser(userId);
-  if (deleted.error) {
-    throw new Error(`Unable to delete compatibility user: ${deleted.error.message}`);
-  }
+  if (deleted.error) throw new Error(`Unable to delete compatibility user: ${deleted.error.message}`);
   console.log('Deleted ephemeral Supabase Auth compatibility user.');
 }
 

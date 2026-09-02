@@ -22,12 +22,6 @@ const FULL_STACK_ADMIN_KEY_NAMES = [
   ...ADMIN_KEY_NAMES,
 ] as const;
 
-const MANAGEMENT_ADMIN_KEY_NAMES = [
-  'SUPABASE_FULLSTACK_SERVICE_ROLE_KEY',
-  'SUPABASE_FULLSTACK_SECRET_KEY',
-  ...ADMIN_KEY_NAMES,
-] as const;
-
 export function resolveSupabasePublicKey(
   env: Environment = process.env,
   options: { fullStack?: boolean } = {},
@@ -40,19 +34,6 @@ export function resolveSupabaseAdminKey(
   options: { fullStack?: boolean } = {},
 ): string {
   return firstNonEmpty(env, options.fullStack ? FULL_STACK_ADMIN_KEY_NAMES : ADMIN_KEY_NAMES);
-}
-
-export function resolveSupabaseManagementAdminKey(env: Environment = process.env): string {
-  return firstNonEmpty(env, MANAGEMENT_ADMIN_KEY_NAMES);
-}
-
-export function resolveManagementApiBases(baseUrl: string): string[] {
-  const normalized = baseUrl.trim().replace(/\/+$/, '');
-  if (!normalized) return [];
-  const alternate = normalized.endsWith('/api')
-    ? normalized.slice(0, -4)
-    : `${normalized}/api`;
-  return alternate === normalized ? [normalized] : [normalized, alternate];
 }
 
 export function requiredSupabasePublicKey(env: Environment = process.env): string {
