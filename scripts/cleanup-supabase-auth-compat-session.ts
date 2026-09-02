@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 
 import { createClient } from '@supabase/supabase-js';
-import { requiredSupabaseAdminKey } from './supabase-compat-env.js';
+import { resolveSupabaseAdminKey, requiredSupabaseAdminKey } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
-const adminKey = requiredSupabaseAdminKey();
+const adminKey = resolveSupabaseAdminKey(process.env, { fullStack: true }) || requiredSupabaseAdminKey();
 const userId = process.env.SUPABASE_COMPAT_USER_ID?.trim();
 
 if (userId) {
