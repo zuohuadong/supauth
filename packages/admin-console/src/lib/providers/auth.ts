@@ -320,6 +320,13 @@ function destroyCurrentAdminSsoRuntime(): void {
   setAdminAuthenticatedFetch(null);
 }
 
+export function resetAdminAuthRuntimeForTests(): void {
+  runtimeSsoConfigPromise = null;
+  destroyCurrentAdminSsoRuntime();
+  adminSsoEnabled = Boolean(COMPILED_SSO_CONFIG);
+  supaoauthAuthProvider = tokenAuthProvider;
+}
+
 async function withAdminSsoAuthLock<T>(
   operation: () => Promise<T> | T,
   signal?: AbortSignal,

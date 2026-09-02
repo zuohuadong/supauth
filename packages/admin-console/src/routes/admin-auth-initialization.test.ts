@@ -1,7 +1,8 @@
 // Bun runs this module directly; the Svelte check does not include Bun's test globals.
 // @ts-nocheck
-import { describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { createAdminAuthInitializationController } from './admin-auth-initialization.js';
+import { resetAdminAuthRuntimeForTests } from '../lib/providers/auth.js';
 
 function deferredRequest() {
   let resolveRequest;
@@ -62,6 +63,14 @@ async function waitFor(predicate, message) {
 async function flushMicrotasks() {
   for (let attempt = 0; attempt < 12; attempt += 1) await Promise.resolve();
 }
+
+beforeEach(() => {
+  resetAdminAuthRuntimeForTests();
+});
+
+afterEach(() => {
+  resetAdminAuthRuntimeForTests();
+});
 
 describe('admin auth initialization controller', () => {
   test('prepares callback recovery only for an explicit retry', async () => {
