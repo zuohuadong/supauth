@@ -108,6 +108,7 @@ describe('Supabase claims compatibility contract', () => {
     expect(sessionPreparation).toContain('verifiedRuntimeVersion(runtimeUrl, expectedCompatVersion)');
     expect(sessionPreparation).toContain('runtimeVersion === currentCompatVersion');
     expect(sessionPreparation).toContain("new Set(['v2.192.0', currentCompatVersion])");
+    expect(sessionPreparation).toContain('resolveManagementApiBases(managementApiUrl)');
     expect(sessionPreparation).toContain('resolveSupabaseManagementAdminKey(process.env)');
     expect(sessionPreparation).toContain('resolveSupabaseAdminKey(process.env, { fullStack: true })');
     expect(sessionPreparation).toContain('resolveSupabasePublicKey(process.env, { fullStack: true })');
@@ -115,8 +116,9 @@ describe('Supabase claims compatibility contract', () => {
     expect(sessionPreparation).toContain("const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF')");
     expect(sessionPreparation).toContain("|| process.env.SUPABASE_URL?.trim()");
     expect(sessionPreparation).toContain("|| process.env.SUPABASE_FULLSTACK_URL?.trim()");
-    expect(sessionPreparation).toContain('createCompatibilityUser(managementApiUrl, tenantRef, adminKey, credentials, githubEnv)');
-    expect(sessionPreparation).toContain('requestProjectAuthUser(managementApiUrl, tenantRef, adminKey, \'POST\'');
+    expect(sessionPreparation).toContain('createCompatibilityUser(managementApiBases, tenantRef, adminKey, credentials, githubEnv)');
+    expect(sessionPreparation).toContain('requestProjectAuthUser(managementApiBases, tenantRef, adminKey, \'POST\'');
+    expect(sessionPreparation).toContain('lookupCompatibilityUserId(managementApiBases, tenantRef, adminKey, credentials.email)');
     expect(sessionPreparation).toContain('/v1/projects/${encodeURIComponent(tenantRef)}/auth/users');
     expect(sessionPreparation.indexOf('createCompatibilityUser(')).toBeLessThan(
       sessionPreparation.indexOf('supabase.auth.signInWithPassword'),
@@ -129,7 +131,6 @@ describe('Supabase claims compatibility contract', () => {
       const workflow = readFileSync(workflowPath, 'utf8');
       expect(workflow).toContain('SUPACLOUD_AUTH_AUTHORITY_REF: jbknfiwdgbatcxfbiopo');
       expect(workflow).toContain('MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}');
-      expect(workflow).toContain('SUPACLOUD_MASTER_TOKEN: ${{ secrets.LIVE_SUPACLOUD_MASTER_TOKEN || secrets.LIVE_SUPACLOUD_INTERNAL_TOKEN }}');
       expect(workflow).toContain('SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}');
       expect(workflow).toContain('SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}');
       expect(workflow).toContain('SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}');

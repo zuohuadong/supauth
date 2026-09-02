@@ -5,6 +5,7 @@ import { createSupaCloudOAuthFetch } from '@supacloud/js';
 import { createClient } from '@supabase/supabase-js';
 import {
   resolveSupabaseAdminKey,
+  resolveManagementApiBases,
   resolveSupabasePublicKey,
   resolveSupabaseManagementAdminKey,
   requiredSupabaseAdminKey,
@@ -16,6 +17,7 @@ const managementApiUrl = process.env.MANAGEMENT_URL?.trim().replace(/\/+$/, '')
   || process.env.SUPABASE_URL?.trim().replace(/\/+$/, '')
   || process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '')
   || runtimeUrl;
+const managementApiBases = resolveManagementApiBases(managementApiUrl);
 const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF');
 const clientId = requiredEnv('OAUTH21_CLIENT_ID');
 const redirectUri = requiredEnv('OAUTH21_REDIRECT_URI');
@@ -63,7 +65,7 @@ const supabase = createClient(runtimeUrl, publicKey, {
   },
 });
 
-await createCompatibilityUser(managementApiUrl, tenantRef, adminKey, credentials, githubEnv);
+await createCompatibilityUser(managementApiBases, tenantRef, adminKey, credentials, githubEnv);
 const signIn = await supabase.auth.signInWithPassword(credentials);
 if (signIn.error || !signIn.data.session) {
   throw new Error(`Supabase Auth compatibility sign-in failed: ${signIn.error?.message || 'missing session'}`);
@@ -206,20 +208,20 @@ function ephemeralCredentials(baseEmail: string): CompatibilityCredentials {
 }
 
 async function createCompatibilityUser(
-  managementApiUrl: string,
+  managementApiBases: string[],
   tenantRef: string,
   adminKey: string,
   credentials: CompatibilityCredentials,
   githubEnv: string,
 ): Promise<void> {
-  const created = await requestProjectAuthUser(managementApiUrl, tenantRef, adminKey, 'POST', {
+  const created = await requestProjectAuthUser(managementApiBases, tenantRef, adminKey, 'POST', {
     ...credentials,
     email_confirm: true,
   });
   const createdText = await created.text().catch(() => '');
   const createdBody = parseJsonObject(createdText) as { id?: string; user?: { id?: string }; message?: string; error?: string } | null;
   const createdUserId = createdBody?.id || createdBody?.user?.id
-    || await lookupCompatibilityUserId(managementApiUrl, tenantRef, adminKey, credentials.email);
+    || await lookupCompatibilityUserId(managementApiBases, tenantRef, adminKey, credentials.email);
   if (!created.ok || !createdUserId) {
     throw new Error(`Unable to create compatibility user: status=${created.status} body=${compactBodyText(createdText)} fallback=${createdBody?.message || createdBody?.error || 'missing user'}`);
   }
@@ -234,49 +236,57 @@ async function createCompatibilityUser(
 }
 
 async function requestProjectAuthUser(
-  fullStackUrl: string,
+  managementApiBases: string[],
   tenantRef: string,
   adminKey: string,
   method: 'POST' | 'DELETE',
   body?: Record<string, unknown>,
 ): Promise<Response> {
-  return fetch(`${fullStackUrl}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users`, {
-    method,
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-      apikey: adminKey,
-      authorization: `Bearer ${adminKey}`,
-      'x-project-ref': tenantRef,
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+  let lastResponse: Response | null = null;
+  for (const managementApiBase of managementApiBases) {
+    const response = await fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users`, {
+      method,
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        apikey: adminKey,
+        authorization: `Bearer ${adminKey}`,
+        'x-project-ref': tenantRef,
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    lastResponse = response;
+    if (response.status !== 404) return response;
+  }
+  return lastResponse!;
 }
 
 async function lookupCompatibilityUserId(
-  managementApiUrl: string,
+  managementApiBases: string[],
   tenantRef: string,
   adminKey: string,
   email: string,
 ): Promise<string | null> {
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const response = await fetch(`${managementApiUrl}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {
-      headers: {
-        accept: 'application/json',
-        apikey: adminKey,
-        authorization: `Bearer ${adminKey}`,
-        'x-project-ref': tenantRef,
-      },
-    });
-    if (response.ok) {
-      const payload = await response.json().catch(() => null) as { items?: Array<Record<string, unknown>>; users?: Array<Record<string, unknown>>; data?: Array<Record<string, unknown>> } | null;
-      const candidates = [
-        ...(Array.isArray(payload?.items) ? payload.items : []),
-        ...(Array.isArray(payload?.users) ? payload.users : []),
-        ...(Array.isArray(payload?.data) ? payload.data : []),
-      ];
-      const match = candidates.find((item) => typeof item?.id === 'string' && typeof item?.email === 'string' && item.email.toLowerCase() === email.toLowerCase());
-      if (typeof match?.id === 'string') return match.id;
+    for (const managementApiBase of managementApiBases) {
+      const response = await fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {
+        headers: {
+          accept: 'application/json',
+          apikey: adminKey,
+          authorization: `Bearer ${adminKey}`,
+          'x-project-ref': tenantRef,
+        },
+      });
+      if (response.ok) {
+        const payload = await response.json().catch(() => null) as { items?: Array<Record<string, unknown>>; users?: Array<Record<string, unknown>>; data?: Array<Record<string, unknown>> } | null;
+        const candidates = [
+          ...(Array.isArray(payload?.items) ? payload.items : []),
+          ...(Array.isArray(payload?.users) ? payload.users : []),
+          ...(Array.isArray(payload?.data) ? payload.data : []),
+        ];
+        const match = candidates.find((item) => typeof item?.id === 'string' && typeof item?.email === 'string' && item.email.toLowerCase() === email.toLowerCase());
+        if (typeof match?.id === 'string') return match.id;
+      }
     }
     if (attempt < 5) await delay(250);
   }
