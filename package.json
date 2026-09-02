@@ -21,7 +21,7 @@
     "test:contracts": "bun test --isolate tests/*.test.ts",
     "check:openapi-additive": "bun run scripts/verify-openapi-additive.ts",
     "check": "bun run typecheck && bun run test && bun run check:openapi-additive && bun run --filter '@supauth/admin-console' check && bun run --filter '@supauth/admin-console' build",
-    "test:supabase-auth-compat": "REQUIRE_SUPABASE_AUTH_COMPAT=1 RUN_SUPABASE_OAUTH21_COMPAT=1 RUN_SUPABASE_RUNTIME_COMPAT=1 RUN_SUPABASE_FULL_STACK_COMPAT=1 bun test tests/integration/supabase-compat/oauth21.test.ts tests/integration/supabase-compat/supabase-js.test.ts tests/integration/supabase-compat/full-stack.test.ts tests/integration/supabase-compat/supacloud-js.test.ts",
+    "test:supabase-auth-compat": "REQUIRE_SUPABASE_AUTH_COMPAT=1 RUN_SUPABASE_OAUTH21_COMPAT=1 RUN_SUPABASE_RUNTIME_COMPAT=1 RUN_SUPABASE_FULL_STACK_COMPAT=1 bun --use-system-ca test tests/integration/supabase-compat/oauth21.test.ts tests/integration/supabase-compat/supabase-js.test.ts tests/integration/supabase-compat/full-stack.test.ts tests/integration/supabase-compat/supacloud-js.test.ts",
     "test:supabase-auth-compat:smoke": "bun test tests/integration/supabase-compat/oauth21.test.ts tests/integration/supabase-compat/supabase-js.test.ts tests/integration/supabase-compat/full-stack.test.ts tests/integration/supabase-compat/supacloud-js.test.ts",
     "release:gate": "bun run scripts/release-gate.ts",
     "tenant:apply-sign-in": "bun run scripts/apply-sign-in-experience.ts",

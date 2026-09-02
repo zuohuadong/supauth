@@ -75,17 +75,26 @@ jobs:
       - name: Check live runner clock against GoTrue
         env:
           OAUTH_RUNTIME_URL: ${{ secrets.LIVE_SUPABASE_AUTH_URL || secrets.LIVE_OAUTH_RUNTIME_URL }}
-        run: bun run scripts/check-live-clock-skew.ts
+        run: bun --use-system-ca run scripts/check-live-clock-skew.ts
 
       - name: Prepare ephemeral OAuth compatibility session
         env:
           OAUTH_RUNTIME_URL: ${{ secrets.LIVE_SUPABASE_AUTH_URL || secrets.LIVE_OAUTH_RUNTIME_URL }}
           OAUTH21_CLIENT_ID: ${{ secrets.LIVE_OAUTH21_CLIENT_ID }}
           OAUTH21_REDIRECT_URI: ${{ secrets.LIVE_OAUTH21_REDIRECT_URI }}
+          SUPACLOUD_AUTH_AUTHORITY_REF: ${{ vars.SUPACLOUD_AUTH_AUTHORITY_REF || vars.LIVE_SUPACLOUD_AUTH_AUTHORITY_REF || 'lhevaxecbonjjdbardgi' }}
+          MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_ANON_KEY: ${{ secrets.LIVE_SUPABASE_ANON_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_FULLSTACK_URL: ${{ secrets.LIVE_SUPABASE_FULLSTACK_URL }}
+          SUPABASE_FULLSTACK_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_PUBLISHABLE_KEY || secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_FULLSTACK_ANON_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_ANON_KEY || secrets.LIVE_SUPABASE_ANON_KEY }}
+          SUPABASE_FULLSTACK_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SECRET_KEY || secrets.LIVE_SUPABASE_SECRET_KEY }}
+          SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SERVICE_ROLE_KEY || secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_TEST_EMAIL: ${{ secrets.LIVE_SUPABASE_TEST_EMAIL }}
-        run: bun run scripts/prepare-supabase-auth-compat-session.ts
+        run: bun --use-system-ca run scripts/prepare-supabase-auth-compat-session.ts
 
       - name: Run strict Supabase Auth compatibility suite
         env:
@@ -96,13 +105,18 @@ jobs:
           MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}
           OAUTH21_CLIENT_ID: ${{ secrets.LIVE_OAUTH21_CLIENT_ID }}
           OAUTH21_REDIRECT_URI: ${{ secrets.LIVE_OAUTH21_REDIRECT_URI }}
+          SUPACLOUD_AUTH_AUTHORITY_REF: ${{ vars.SUPACLOUD_AUTH_AUTHORITY_REF || vars.LIVE_SUPACLOUD_AUTH_AUTHORITY_REF || 'lhevaxecbonjjdbardgi' }}
           OAUTH21_TOKEN_AUTH_METHOD: ${{ secrets.LIVE_OAUTH21_TOKEN_AUTH_METHOD }}
           OAUTH21_CLIENT_SECRET: ${{ secrets.LIVE_OAUTH21_CLIENT_SECRET }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_ANON_KEY: ${{ secrets.LIVE_SUPABASE_ANON_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_FULLSTACK_URL: ${{ secrets.LIVE_SUPABASE_FULLSTACK_URL }}
-          SUPABASE_FULLSTACK_ANON_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_ANON_KEY || secrets.LIVE_SUPABASE_ANON_KEY }}
-          SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SERVICE_ROLE_KEY || secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_FULLSTACK_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_PUBLISHABLE_KEY }}
+          SUPABASE_FULLSTACK_ANON_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_ANON_KEY }}
+          SUPABASE_FULLSTACK_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SECRET_KEY }}
+          SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SERVICE_ROLE_KEY }}
         run: |
           set -o pipefail
           bun run test:supabase-auth-compat 2>&1 | tee supabase-auth-compat.log
@@ -115,8 +129,14 @@ jobs:
         if: always()
         env:
           OAUTH_RUNTIME_URL: ${{ secrets.LIVE_SUPABASE_AUTH_URL || secrets.LIVE_OAUTH_RUNTIME_URL }}
+          SUPACLOUD_AUTH_AUTHORITY_REF: ${{ vars.SUPACLOUD_AUTH_AUTHORITY_REF || vars.LIVE_SUPACLOUD_AUTH_AUTHORITY_REF || 'lhevaxecbonjjdbardgi' }}
+          MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}
+          SUPABASE_FULLSTACK_URL: ${{ secrets.LIVE_SUPABASE_FULLSTACK_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}
-        run: bun run scripts/cleanup-supabase-auth-compat-session.ts
+          SUPABASE_FULLSTACK_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SECRET_KEY || secrets.LIVE_SUPABASE_SECRET_KEY }}
+          SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SERVICE_ROLE_KEY || secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}
+        run: bun --use-system-ca run scripts/cleanup-supabase-auth-compat-session.ts
 
   package-auth-ui:
     name: Package Auth UI SDK

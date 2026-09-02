@@ -103,7 +103,7 @@ describe('@supauth/authorization-conformance', () => {
       },
     });
     expect(report).toEqual({ passed: true, violations: [] });
-    expect(observed).toEqual(REQUIRED_AUTHORIZATION_SCENARIOS);
+    expect(observed).toEqual([...REQUIRED_AUTHORIZATION_SCENARIOS]);
   });
 
   it('reports unsafe outcomes and scenario runner failures', async () => {

@@ -38,6 +38,7 @@ function rel(path: string) {
 mkdirSync(artifactDir, { recursive: true });
 
 if (!skipBuild) {
+  run(['bun', 'run', '--filter', '@supauth/shared', 'build']);
   run(['bun', 'run', '--filter', '@supauth/auth-server', 'build']);
   run(['bun', 'run', '--filter', '@supauth/admin-console', 'build'], {
     env: {

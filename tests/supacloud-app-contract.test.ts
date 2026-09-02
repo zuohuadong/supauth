@@ -111,12 +111,21 @@ describe('SupAuth SupaCloud app contract', () => {
   it('builds a project-generic console behind the same-origin BFF', () => {
     const buildScript = readFileSync('scripts/build-supacloud-app.ts', 'utf8');
 
+    expect(buildScript).toContain("run(['bun', 'run', '--filter', '@supauth/shared', 'build'])");
     expect(buildScript).toContain("VITE_AUTH_SERVER_URL: '/api'");
     expect(buildScript).toContain("VITE_ADMIN_SSO_ISSUER: ''");
     expect(buildScript).toContain("VITE_ADMIN_SSO_CLIENT_ID: ''");
     expect(buildScript).toContain("resolve(artifactDir, 'function-bundle')");
     expect(buildScript).toContain("resolve(deploymentBundleDir, 'index.ts')");
     expect(buildScript).toContain("resolve(deploymentBundleDir, 'admin-console/build')");
+  });
+
+  it('builds file-type 22 through an Edge-safe root-entry transform', () => {
+    const buildScript = readFileSync('scripts/build-supauth-function.ts', 'utf8');
+
+    expect(buildScript).toContain("resolveRuntimeSafeEntry('file-type')");
+    expect(buildScript).not.toContain("resolveRuntimeSafeEntry('file-type', 'core')");
+    expect(buildScript).toContain('Edge Runtime 不支持 file-type 的文件系统入口');
   });
 
   it('declares SupaCloud-owned management domains and managed jobs', () => {

@@ -1,13 +1,15 @@
 #!/usr/bin/env bun
 
 import { createClient } from '@supabase/supabase-js';
+import { resolveSupabaseAdminKey } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
-const serviceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+const adminKey = resolveSupabaseAdminKey(process.env)
+  || requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
 const userId = process.env.SUPABASE_COMPAT_USER_ID?.trim();
 
 if (userId) {
-  const admin = createClient(runtimeUrl, serviceRoleKey, {
+  const admin = createClient(runtimeUrl, adminKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
   const deleted = await admin.auth.admin.deleteUser(userId);

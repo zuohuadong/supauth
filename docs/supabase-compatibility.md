@@ -33,18 +33,18 @@ SupaOAuth must tolerate SupaCloud upgrading the underlying GoTrue/Supabase Auth 
 - Release gates must keep live Supabase Auth compatibility checks runnable against the current deployed upstream version.
 
 The release matrix retains unmodified GoTrue v2.192.0 as the regression floor
-and uses unmodified v2.195.0 as the current runtime target. Set
+and uses unmodified v2.196.0 as the current runtime target. Set
 `SUPABASE_AUTH_COMPAT_VERSION` to the exact matrix version; it is only an
 expectation, never a capability source. Both live session preparation and the
 OAuth compatibility suite must read `/auth/v1/health` and require its structured
 `version` to exactly match that expectation before continuing. A non-success
 health response, invalid or missing version, or mismatch fails the gate. The
-only accepted matrix values are `v2.192.0` and `v2.195.0`; an intermediate or
+only accepted matrix values are `v2.192.0` and `v2.196.0`; an intermediate or
 unknown declared version also fails rather than inheriting floor behavior. The
-default expectation remains `v2.195.0`, so pointing the default gate at an older
+default expectation remains `v2.196.0`, so pointing the default gate at an older
 runtime cannot silently disable current-target assertions. A v2.192 floor run
 must explicitly declare `v2.192.0` and connect to health read-back reporting
-that exact version before v2.195-only discovery and scope assertions are disabled.
+that exact version before current-target discovery and scope assertions are disabled.
 Each version must run the same strict
 `bun run test:supabase-auth-compat` gate with zero
 failures and zero skips. Coverage includes password/session/refresh, OAuth
@@ -56,15 +56,23 @@ and requires its JWT to downgrade from `aal2` to `aal1` while AMR remains a list
 of authentication `method` entries. The disposable database and Function assets
 are versioned under `tests/fixtures/supabase-auth-compat/`.
 
+Live compatibility gates prefer Supabase's modern
+`SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` pair, including the matching
+`SUPABASE_FULLSTACK_*` overrides for a dedicated fixture. Legacy
+`SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY` variables remain supported as
+fallbacks for runtimes that still accept JWT API keys. The modern key always
+wins when both forms are configured, so a rejected legacy HS256 service-role
+JWT cannot mask a working secret key on upgraded GoTrue runtimes.
+
 Before upgrading either version, back up the tenant `auth` schema. The stock
 v2.192.0 startup applies the additive
 `20260625000000_add_custom_claims_allowlist.up.sql` migration, which adds
 `auth.custom_oauth_providers.custom_claims_allowlist text[] NOT NULL DEFAULT
 '{}'`; acceptance must read that column back after GoTrue starts. The
-v2.192.0-to-v2.195.0 upstream changes require no SupaOAuth database migration,
-so the v2.195.0 rollout must not invent or run one for this upgrade.
+v2.192.0-to-v2.196.0 upstream changes require no SupaOAuth database migration,
+so the v2.196.0 rollout must not invent or run one for this upgrade.
 
-GoTrue v2.195.0 discovery must advertise `offline_access`. The current-target
+GoTrue v2.196.0 discovery must advertise `offline_access`. The current-target
 compatibility session requests it and must receive a refresh token whose access
 token preserves the granted scope. The v2.192.0 floor keeps the earlier scope
 request because it predates that discovery contract. GoTrue also refreshes
@@ -78,9 +86,9 @@ Account Center pages clear the local page session and explain that the account
 is disabled; unrelated 403 responses remain `upstream_forbidden` and keep the
 local session intact.
 
-GoTrue v2.195.0 SCIM support remains dark. SupaOAuth must not enable
+GoTrue v2.196.0 SCIM support, including its metadata endpoints, remains dark. SupaOAuth must not enable
 `GOTRUE_EXPERIMENTAL_SCIM_ENABLED` or advertise an administration surface while
-the upstream endpoints are placeholders that return HTTP 501.
+the capability is not explicitly accepted by the product.
 
 GoTrue v2.193.0 provider-linking domains remain opt-in.
 `GOTRUE_EXPERIMENTAL_PROVIDER_LINKING_DOMAINS` is passed only when an
