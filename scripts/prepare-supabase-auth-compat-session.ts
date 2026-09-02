@@ -3,13 +3,27 @@
 import { appendFileSync } from 'node:fs';
 import { createSupaCloudOAuthFetch } from '@supacloud/js';
 import { createClient } from '@supabase/supabase-js';
-import { requiredSupabaseAdminKey, requiredSupabasePublicKey } from './supabase-compat-env.js';
+import {
+  resolveSupabaseAdminKey,
+  resolveSupabasePublicKey,
+  resolveSupabaseManagementAdminKey,
+  resolveManagementApiBases,
+  requiredSupabaseAdminKey,
+  requiredSupabasePublicKey,
+} from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
+const managementApiUrl = process.env.MANAGEMENT_URL?.trim().replace(/\/+$/, '')
+  || process.env.SUPABASE_URL?.trim().replace(/\/+$/, '')
+  || process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '')
+  || runtimeUrl;
+const managementApiBases = resolveManagementApiBases(managementApiUrl);
 const clientId = requiredEnv('OAUTH21_CLIENT_ID');
 const redirectUri = requiredEnv('OAUTH21_REDIRECT_URI');
-const publicKey = requiredSupabasePublicKey();
-const adminKey = requiredSupabaseAdminKey();
+const publicKey = resolveSupabasePublicKey(process.env, { fullStack: true }) || requiredSupabasePublicKey();
+const adminKey = resolveSupabaseManagementAdminKey(process.env)
+  || resolveSupabaseAdminKey(process.env, { fullStack: true })
+  || requiredSupabaseAdminKey();
 const credentials = ephemeralCredentials(requiredEnv('SUPABASE_TEST_EMAIL'));
 const githubEnv = requiredEnv('GITHUB_ENV');
 const currentCompatVersion = 'v2.196.0';
@@ -50,7 +64,7 @@ const supabase = createClient(runtimeUrl, publicKey, {
   },
 });
 
-await createCompatibilityUser(runtimeUrl, adminKey, credentials, githubEnv);
+await createCompatibilityUser(managementApiBases, requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF'), adminKey, credentials, githubEnv);
 const signIn = await supabase.auth.signInWithPassword(credentials);
 if (signIn.error || !signIn.data.session) {
   throw new Error(`Supabase Auth compatibility sign-in failed: ${signIn.error?.message || 'missing session'}`);
@@ -193,29 +207,110 @@ function ephemeralCredentials(baseEmail: string): CompatibilityCredentials {
 }
 
 async function createCompatibilityUser(
-  runtimeUrl: string,
+  managementApiBases: string[],
+  tenantRef: string,
   adminKey: string,
   credentials: CompatibilityCredentials,
   githubEnv: string,
 ): Promise<void> {
-  const admin = createClient(runtimeUrl, adminKey, {
-    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
-  });
-  const created = await admin.auth.admin.createUser({
+  const created = await requestProjectAuthUser(managementApiBases, tenantRef, adminKey, 'POST', {
     ...credentials,
     email_confirm: true,
   });
-  if (created.error || !created.data.user) {
-    throw new Error(`Unable to create compatibility user: ${created.error?.message || 'missing user'}`);
+  const createdText = await created.text().catch(() => '');
+  const createdBody = parseJsonObject(createdText) as { id?: string; user?: { id?: string }; message?: string; error?: string } | null;
+  const createdUserId = createdBody?.id || createdBody?.user?.id
+    || await lookupCompatibilityUserId(managementApiBases, tenantRef, adminKey, credentials.email);
+  if (!created.ok || !createdUserId) {
+    throw new Error(`Unable to create compatibility user: status=${created.status} body=${compactBodyText(createdText)} fallback=${createdBody?.message || createdBody?.error || 'missing user'}`);
   }
   console.log(`::add-mask::${credentials.email}`);
   console.log(`::add-mask::${credentials.password}`);
   appendFileSync(githubEnv, [
     `SUPABASE_TEST_EMAIL=${credentials.email}`,
     `SUPABASE_TEST_PASSWORD=${credentials.password}`,
-    `SUPABASE_COMPAT_USER_ID=${created.data.user.id}`,
+    `SUPABASE_COMPAT_USER_ID=${createdUserId}`,
     '',
   ].join('\n'));
+}
+
+async function requestProjectAuthUser(
+  managementApiBases: string[],
+  tenantRef: string,
+  adminKey: string,
+  method: 'POST' | 'DELETE',
+  body?: Record<string, unknown>,
+): Promise<Response> {
+  let lastResponse: Response | null = null;
+  for (const managementApiBase of managementApiBases) {
+    const response = await fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users`, {
+      method,
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        apikey: adminKey,
+        authorization: `Bearer ${adminKey}`,
+        'x-project-ref': tenantRef,
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    lastResponse = response;
+    if (response.status !== 404) return response;
+  }
+  return lastResponse!;
+}
+
+async function lookupCompatibilityUserId(
+  managementApiBases: string[],
+  tenantRef: string,
+  adminKey: string,
+  email: string,
+): Promise<string | null> {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    for (const managementApiBase of managementApiBases) {
+      const response = await fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {
+        headers: {
+          accept: 'application/json',
+          apikey: adminKey,
+          authorization: `Bearer ${adminKey}`,
+          'x-project-ref': tenantRef,
+        },
+      });
+      if (response.ok) {
+        const payload = await response.json().catch(() => null) as { items?: Array<Record<string, unknown>>; users?: Array<Record<string, unknown>>; data?: Array<Record<string, unknown>> } | null;
+        const candidates = [
+          ...(Array.isArray(payload?.items) ? payload.items : []),
+          ...(Array.isArray(payload?.users) ? payload.users : []),
+          ...(Array.isArray(payload?.data) ? payload.data : []),
+        ];
+        const match = candidates.find((item) => typeof item?.id === 'string' && typeof item?.email === 'string' && item.email.toLowerCase() === email.toLowerCase());
+        if (typeof match?.id === 'string') return match.id;
+      }
+    }
+    if (attempt < 5) await delay(250);
+  }
+  return null;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseJsonObject(text: string): Record<string, unknown> | null {
+  if (!text.trim()) return null;
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function compactBodyText(text: string): string {
+  const compacted = text.trim().replace(/\s+/g, ' ');
+  return compacted.length > 240 ? `${compacted.slice(0, 240)}…` : compacted || '<empty>';
 }
 
 async function verifiedRuntimeVersion(runtimeBaseUrl: string, expectedVersion: string): Promise<string> {

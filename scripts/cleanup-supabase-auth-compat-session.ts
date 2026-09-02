@@ -1,42 +1,19 @@
 #!/usr/bin/env bun
 
-import {
-  resolveSupabaseAdminKey,
-  resolveManagementApiBases,
-  resolveSupabaseManagementAdminKey,
-  requiredSupabaseAdminKey,
-} from './supabase-compat-env.js';
+import { createClient } from '@supabase/supabase-js';
+import { requiredSupabaseAdminKey } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
-const managementApiUrl = process.env.MANAGEMENT_URL?.trim().replace(/\/+$/, '')
-  || process.env.SUPABASE_URL?.trim().replace(/\/+$/, '')
-  || process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '')
-  || runtimeUrl;
-const managementApiBases = resolveManagementApiBases(managementApiUrl);
-const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF');
-const adminKey = resolveSupabaseManagementAdminKey(process.env)
-  || resolveSupabaseAdminKey(process.env, { fullStack: true })
-  || requiredSupabaseAdminKey();
+const adminKey = requiredSupabaseAdminKey();
 const userId = process.env.SUPABASE_COMPAT_USER_ID?.trim();
 
 if (userId) {
-  let deleted: Response | null = null;
-  for (const managementApiBase of managementApiBases) {
-    deleted = await fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users/${encodeURIComponent(userId)}`, {
-      method: 'DELETE',
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/json',
-        apikey: adminKey,
-        authorization: `Bearer ${adminKey}`,
-        'x-project-ref': tenantRef,
-      },
-    });
-    if (deleted.status !== 404) break;
-  }
-  if (!deleted.ok) {
-    const body = await deleted.json().catch(() => null) as { message?: string; error?: string } | null;
-    throw new Error(`Unable to delete compatibility user: ${(body?.message || body?.error || `HTTP ${deleted.status}`)}`);
+  const admin = createClient(runtimeUrl, adminKey, {
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+  });
+  const deleted = await admin.auth.admin.deleteUser(userId);
+  if (deleted.error) {
+    throw new Error(`Unable to delete compatibility user: ${deleted.error.message}`);
   }
   console.log('Deleted ephemeral Supabase Auth compatibility user.');
 }
