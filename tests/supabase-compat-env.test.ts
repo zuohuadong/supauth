@@ -2,7 +2,9 @@ import { describe, expect, it } from 'bun:test';
 import {
   requiredSupabaseAdminKey,
   requiredSupabasePublicKey,
+  resolveManagementApiBases,
   resolveSupabaseAdminKey,
+  resolveSupabaseManagementAdminKey,
   resolveSupabasePublicKey,
 } from '../scripts/supabase-compat-env.js';
 
@@ -63,6 +65,32 @@ describe('Supabase compatibility key selection', () => {
 
     expect(resolveSupabasePublicKey(env, { fullStack: true })).toBe('fixture-legacy-public');
     expect(resolveSupabaseAdminKey(env, { fullStack: true })).toBe('fixture-legacy-admin');
+  });
+
+  it('prefers full-stack management admin keys before project-wide admin keys', () => {
+    const env = {
+      SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: 'fixture-management-admin',
+      SUPABASE_FULLSTACK_SECRET_KEY: 'fixture-management-secret',
+      SUPABASE_SECRET_KEY: 'project-admin',
+      SUPABASE_SERVICE_ROLE_KEY: 'legacy-admin',
+    };
+
+    expect(resolveSupabaseManagementAdminKey(env)).toBe('fixture-management-admin');
+  });
+
+  it('normalizes management API bases and keeps the /api alternate available', () => {
+    expect(resolveManagementApiBases('https://auth.example.com')).toEqual([
+      'https://auth.example.com',
+      'https://auth.example.com/api',
+    ]);
+    expect(resolveManagementApiBases('https://auth.example.com/api')).toEqual([
+      'https://auth.example.com/api',
+      'https://auth.example.com',
+    ]);
+    expect(resolveManagementApiBases('https://auth.example.com/')).toEqual([
+      'https://auth.example.com',
+      'https://auth.example.com/api',
+    ]);
   });
 
   it('fails with both accepted variable names when no key is configured', () => {

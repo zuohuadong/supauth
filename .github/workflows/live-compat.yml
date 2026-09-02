@@ -44,6 +44,8 @@ jobs:
           OAUTH_RUNTIME_URL: ${{ secrets.LIVE_SUPABASE_AUTH_URL || secrets.LIVE_OAUTH_RUNTIME_URL }}
           OAUTH21_CLIENT_ID: ${{ secrets.LIVE_OAUTH21_CLIENT_ID }}
           OAUTH21_REDIRECT_URI: ${{ secrets.LIVE_OAUTH21_REDIRECT_URI }}
+          SUPACLOUD_AUTH_AUTHORITY_REF: jbknfiwdgbatcxfbiopo
+          MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_ANON_KEY: ${{ secrets.LIVE_SUPABASE_ANON_KEY }}
           SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}
@@ -65,6 +67,7 @@ jobs:
           MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}
           OAUTH21_CLIENT_ID: ${{ secrets.LIVE_OAUTH21_CLIENT_ID }}
           OAUTH21_REDIRECT_URI: ${{ secrets.LIVE_OAUTH21_REDIRECT_URI }}
+          SUPACLOUD_AUTH_AUTHORITY_REF: jbknfiwdgbatcxfbiopo
           OAUTH21_TOKEN_AUTH_METHOD: ${{ secrets.LIVE_OAUTH21_TOKEN_AUTH_METHOD }}
           OAUTH21_CLIENT_SECRET: ${{ secrets.LIVE_OAUTH21_CLIENT_SECRET }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}
@@ -88,6 +91,8 @@ jobs:
         if: always()
         env:
           OAUTH_RUNTIME_URL: ${{ secrets.LIVE_SUPABASE_AUTH_URL || secrets.LIVE_OAUTH_RUNTIME_URL }}
+          SUPACLOUD_AUTH_AUTHORITY_REF: jbknfiwdgbatcxfbiopo
+          MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}
           SUPABASE_FULLSTACK_URL: ${{ secrets.LIVE_SUPABASE_FULLSTACK_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}

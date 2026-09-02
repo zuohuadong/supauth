@@ -105,15 +105,22 @@ describe('Supabase claims compatibility contract', () => {
     expect(oauthFixture).toContain("`${RUNTIME_URL}/auth/v1/health`");
     expect(oauthFixture).toContain('assertExpectedRuntimeVersion(runtimeVersion, EXPECTED_COMPAT_VERSION)');
     expect(sessionPreparation).toContain("`${runtimeBaseUrl}/auth/v1/health`");
+    expect(sessionPreparation).toContain("const managementApiUrl = process.env.MANAGEMENT_URL?.trim().replace(/\\/+$/, '')");
+    expect(sessionPreparation).toContain("|| process.env.SUPABASE_URL?.trim().replace(/\\/+$/, '')");
+    expect(sessionPreparation).toContain("|| process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\\/+$/, '')");
+    expect(sessionPreparation).toContain('const managementApiBases = resolveManagementApiBases(managementApiUrl);');
     expect(sessionPreparation).toContain('verifiedRuntimeVersion(runtimeUrl, expectedCompatVersion)');
     expect(sessionPreparation).toContain('runtimeVersion === currentCompatVersion');
     expect(sessionPreparation).toContain("new Set(['v2.192.0', currentCompatVersion])");
     expect(sessionPreparation).toContain('resolveSupabasePublicKey(process.env, { fullStack: true })');
+    expect(sessionPreparation).toContain('resolveSupabaseManagementAdminKey(process.env)');
     expect(sessionPreparation).toContain('resolveSupabaseAdminKey(process.env, { fullStack: true })');
-    expect(sessionPreparation).toContain('createCompatibilityUser(runtimeUrl, adminKey, credentials, githubEnv)');
-    expect(sessionPreparation).toContain('const admin = createClient(runtimeUrl, serviceRoleKey');
-    expect(sessionPreparation).toContain('admin.auth.admin.createUser({ ...credentials, email_confirm: true })');
+    expect(sessionPreparation).toContain("await createCompatibilityUser(managementApiBases, requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF'), adminKey, credentials, githubEnv);");
+    expect(sessionPreparation).toContain("fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users`, {");
+    expect(sessionPreparation).toContain("fetch(`${managementApiBase}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {");
     expect(sessionPreparation).toContain('email_confirm: true');
+    expect(sessionPreparation).toContain('x-project-ref');
+    expect(sessionPreparation).toContain('lookupCompatibilityUserId(managementApiBases, tenantRef, adminKey, credentials.email)');
     expect(sessionPreparation.indexOf('createCompatibilityUser(')).toBeLessThan(
       sessionPreparation.indexOf('supabase.auth.signInWithPassword'),
     );
@@ -124,6 +131,7 @@ describe('Supabase claims compatibility contract', () => {
     for (const workflowPath of ['.github/workflows/ci.yml', '.github/workflows/live-compat.yml']) {
       const workflow = readFileSync(workflowPath, 'utf8');
       expect(workflow).toContain('MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}');
+      expect(workflow).toContain('SUPACLOUD_AUTH_AUTHORITY_REF: jbknfiwdgbatcxfbiopo');
       expect(workflow).toContain('SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}');
       expect(workflow).toContain('SUPABASE_ANON_KEY: ${{ secrets.LIVE_SUPABASE_ANON_KEY }}');
       expect(workflow).toContain('SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}');
