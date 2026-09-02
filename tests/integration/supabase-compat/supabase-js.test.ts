@@ -88,8 +88,8 @@ describe('Supabase runtime compatibility', () => {
     expect(Array.isArray(body.keys)).toBe(true);
   });
 
-  liveIt('Management API health returns SupaOAuth response', async () => {
-    const res = await fetch(`${MANAGEMENT_URL}/v1/health`);
+  liveIt('deployed SupAuth Function health returns the SupAuth response', async () => {
+    const res = await fetch(`${RUNTIME_URL}/functions/v1/supauth/api/v1/health`);
     expect(res.ok).toBe(true);
 
     const body = await res.json();
