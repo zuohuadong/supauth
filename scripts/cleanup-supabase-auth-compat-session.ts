@@ -1,6 +1,10 @@
 #!/usr/bin/env bun
 
-import { resolveSupabaseAdminKey, requiredSupabaseAdminKey } from './supabase-compat-env.js';
+import {
+  resolveSupabaseAdminKey,
+  resolveSupabaseManagementAdminKey,
+  requiredSupabaseAdminKey,
+} from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
 const managementApiUrl = process.env.MANAGEMENT_URL?.trim().replace(/\/+$/, '')
@@ -8,7 +12,9 @@ const managementApiUrl = process.env.MANAGEMENT_URL?.trim().replace(/\/+$/, '')
   || process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '')
   || runtimeUrl;
 const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF');
-const adminKey = resolveSupabaseAdminKey(process.env, { fullStack: true }) || requiredSupabaseAdminKey();
+const adminKey = resolveSupabaseManagementAdminKey(process.env)
+  || resolveSupabaseAdminKey(process.env, { fullStack: true })
+  || requiredSupabaseAdminKey();
 const userId = process.env.SUPABASE_COMPAT_USER_ID?.trim();
 
 if (userId) {

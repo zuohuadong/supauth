@@ -108,6 +108,7 @@ describe('Supabase claims compatibility contract', () => {
     expect(sessionPreparation).toContain('verifiedRuntimeVersion(runtimeUrl, expectedCompatVersion)');
     expect(sessionPreparation).toContain('runtimeVersion === currentCompatVersion');
     expect(sessionPreparation).toContain("new Set(['v2.192.0', currentCompatVersion])");
+    expect(sessionPreparation).toContain('resolveSupabaseManagementAdminKey(process.env)');
     expect(sessionPreparation).toContain('resolveSupabaseAdminKey(process.env, { fullStack: true })');
     expect(sessionPreparation).toContain('resolveSupabasePublicKey(process.env, { fullStack: true })');
     expect(sessionPreparation).toContain('const managementApiUrl = process.env.MANAGEMENT_URL?.trim()');
@@ -135,20 +136,9 @@ describe('Supabase claims compatibility contract', () => {
       expect(workflow).toContain('SUPABASE_FULLSTACK_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_PUBLISHABLE_KEY || secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}');
       expect(workflow).toContain('SUPABASE_FULLSTACK_ANON_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_ANON_KEY || secrets.LIVE_SUPABASE_ANON_KEY }}');
       expect(workflow).toContain('SUPABASE_FULLSTACK_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SECRET_KEY || secrets.LIVE_SUPABASE_SECRET_KEY }}');
+      expect(workflow).toContain('SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SERVICE_ROLE_KEY || secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}');
       expect(workflow).toContain('if: always()');
       expect(workflow).toContain('bun --use-system-ca run scripts/cleanup-supabase-auth-compat-session.ts');
-      expect(workflow).toContain(
-        'SUPABASE_FULLSTACK_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_PUBLISHABLE_KEY }}',
-      );
-      expect(workflow).toContain(
-        'SUPABASE_FULLSTACK_ANON_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_ANON_KEY }}',
-      );
-      expect(workflow).toContain(
-        'SUPABASE_FULLSTACK_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SECRET_KEY }}',
-      );
-      expect(workflow).toContain(
-        'SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SERVICE_ROLE_KEY }}',
-      );
     }
   });
 

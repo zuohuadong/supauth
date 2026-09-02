@@ -4,6 +4,7 @@ import {
   requiredSupabasePublicKey,
   resolveSupabaseAdminKey,
   resolveSupabasePublicKey,
+  resolveSupabaseManagementAdminKey,
 } from '../scripts/supabase-compat-env.js';
 
 describe('Supabase compatibility key selection', () => {
@@ -63,6 +64,17 @@ describe('Supabase compatibility key selection', () => {
 
     expect(resolveSupabasePublicKey(env, { fullStack: true })).toBe('fixture-legacy-public');
     expect(resolveSupabaseAdminKey(env, { fullStack: true })).toBe('fixture-legacy-admin');
+  });
+
+  it('prefers fullstack service-role keys for management API calls', () => {
+    const env = {
+      SUPABASE_FULLSTACK_SECRET_KEY: 'fixture-modern-admin',
+      SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: 'fixture-legacy-admin',
+      SUPABASE_SECRET_KEY: 'project-modern-admin',
+      SUPABASE_SERVICE_ROLE_KEY: 'project-legacy-admin',
+    };
+
+    expect(resolveSupabaseManagementAdminKey(env)).toBe('fixture-legacy-admin');
   });
 
   it('fails with both accepted variable names when no key is configured', () => {

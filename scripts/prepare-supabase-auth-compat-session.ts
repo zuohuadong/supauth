@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   resolveSupabaseAdminKey,
   resolveSupabasePublicKey,
+  resolveSupabaseManagementAdminKey,
   requiredSupabaseAdminKey,
   requiredSupabasePublicKey,
 } from './supabase-compat-env.js';
@@ -19,7 +20,9 @@ const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF');
 const clientId = requiredEnv('OAUTH21_CLIENT_ID');
 const redirectUri = requiredEnv('OAUTH21_REDIRECT_URI');
 const publicKey = resolveSupabasePublicKey(process.env, { fullStack: true }) || requiredSupabasePublicKey();
-const adminKey = resolveSupabaseAdminKey(process.env, { fullStack: true }) || requiredSupabaseAdminKey();
+const adminKey = resolveSupabaseManagementAdminKey(process.env)
+  || resolveSupabaseAdminKey(process.env, { fullStack: true })
+  || requiredSupabaseAdminKey();
 const credentials = ephemeralCredentials(requiredEnv('SUPABASE_TEST_EMAIL'));
 const githubEnv = requiredEnv('GITHUB_ENV');
 const currentCompatVersion = 'v2.196.0';
