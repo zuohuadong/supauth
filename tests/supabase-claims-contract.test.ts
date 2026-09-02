@@ -110,6 +110,8 @@ describe('Supabase claims compatibility contract', () => {
     expect(sessionPreparation).toContain("new Set(['v2.192.0', currentCompatVersion])");
     expect(sessionPreparation).toContain('resolveSupabaseAdminKey(process.env, { fullStack: true })');
     expect(sessionPreparation).toContain('resolveSupabasePublicKey(process.env, { fullStack: true })');
+    expect(sessionPreparation).toContain('const fullStackUrl = process.env.SUPABASE_FULLSTACK_URL?.trim()');
+    expect(sessionPreparation).toContain('createCompatibilityUser(fullStackUrl, adminKey, credentials, githubEnv)');
     expect(sessionPreparation.indexOf('createCompatibilityUser(')).toBeLessThan(
       sessionPreparation.indexOf('supabase.auth.signInWithPassword'),
     );
@@ -118,6 +120,7 @@ describe('Supabase claims compatibility contract', () => {
       expect(workflow).toContain('SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}');
       expect(workflow).toContain('SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}');
       expect(workflow).toContain('SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}');
+      expect(workflow).toContain('SUPABASE_FULLSTACK_URL: ${{ secrets.LIVE_SUPABASE_FULLSTACK_URL }}');
       expect(workflow).toContain('SUPABASE_FULLSTACK_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_PUBLISHABLE_KEY || secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}');
       expect(workflow).toContain('SUPABASE_FULLSTACK_ANON_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_ANON_KEY || secrets.LIVE_SUPABASE_ANON_KEY }}');
       expect(workflow).toContain('SUPABASE_FULLSTACK_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SECRET_KEY || secrets.LIVE_SUPABASE_SECRET_KEY }}');

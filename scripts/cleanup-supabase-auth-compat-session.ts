@@ -4,11 +4,12 @@ import { createClient } from '@supabase/supabase-js';
 import { resolveSupabaseAdminKey, requiredSupabaseAdminKey } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
+const fullStackUrl = process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '') || runtimeUrl;
 const adminKey = resolveSupabaseAdminKey(process.env, { fullStack: true }) || requiredSupabaseAdminKey();
 const userId = process.env.SUPABASE_COMPAT_USER_ID?.trim();
 
 if (userId) {
-  const admin = createClient(runtimeUrl, adminKey, {
+  const admin = createClient(fullStackUrl, adminKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
   const deleted = await admin.auth.admin.deleteUser(userId);

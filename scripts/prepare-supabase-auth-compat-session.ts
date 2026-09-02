@@ -11,6 +11,7 @@ import {
 } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
+const fullStackUrl = process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '') || runtimeUrl;
 const clientId = requiredEnv('OAUTH21_CLIENT_ID');
 const redirectUri = requiredEnv('OAUTH21_REDIRECT_URI');
 const publicKey = resolveSupabasePublicKey(process.env, { fullStack: true }) || requiredSupabasePublicKey();
@@ -55,7 +56,7 @@ const supabase = createClient(runtimeUrl, publicKey, {
   },
 });
 
-await createCompatibilityUser(runtimeUrl, adminKey, credentials, githubEnv);
+await createCompatibilityUser(fullStackUrl, adminKey, credentials, githubEnv);
 const signIn = await supabase.auth.signInWithPassword(credentials);
 if (signIn.error || !signIn.data.session) {
   throw new Error(`Supabase Auth compatibility sign-in failed: ${signIn.error?.message || 'missing session'}`);
@@ -198,12 +199,12 @@ function ephemeralCredentials(baseEmail: string): CompatibilityCredentials {
 }
 
 async function createCompatibilityUser(
-  runtimeUrl: string,
+  fullStackUrl: string,
   adminKey: string,
   credentials: CompatibilityCredentials,
   githubEnv: string,
 ): Promise<void> {
-  const admin = createClient(runtimeUrl, adminKey, {
+  const admin = createClient(fullStackUrl, adminKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
   const created = await admin.auth.admin.createUser({ ...credentials, email_confirm: true });
