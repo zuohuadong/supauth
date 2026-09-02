@@ -11,7 +11,9 @@ import {
 } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
-const fullStackUrl = process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '') || runtimeUrl;
+const managementApiUrl = process.env.SUPABASE_URL?.trim().replace(/\/+$/, '')
+  || process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '')
+  || runtimeUrl;
 const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF');
 const clientId = requiredEnv('OAUTH21_CLIENT_ID');
 const redirectUri = requiredEnv('OAUTH21_REDIRECT_URI');
@@ -57,7 +59,7 @@ const supabase = createClient(runtimeUrl, publicKey, {
   },
 });
 
-await createCompatibilityUser(fullStackUrl, tenantRef, adminKey, credentials, githubEnv);
+await createCompatibilityUser(managementApiUrl, tenantRef, adminKey, credentials, githubEnv);
 const signIn = await supabase.auth.signInWithPassword(credentials);
 if (signIn.error || !signIn.data.session) {
   throw new Error(`Supabase Auth compatibility sign-in failed: ${signIn.error?.message || 'missing session'}`);
@@ -200,20 +202,20 @@ function ephemeralCredentials(baseEmail: string): CompatibilityCredentials {
 }
 
 async function createCompatibilityUser(
-  fullStackUrl: string,
+  managementApiUrl: string,
   tenantRef: string,
   adminKey: string,
   credentials: CompatibilityCredentials,
   githubEnv: string,
 ): Promise<void> {
-  const created = await requestProjectAuthUser(fullStackUrl, tenantRef, adminKey, 'POST', {
+  const created = await requestProjectAuthUser(managementApiUrl, tenantRef, adminKey, 'POST', {
     ...credentials,
     email_confirm: true,
   });
   const createdText = await created.text().catch(() => '');
   const createdBody = parseJsonObject(createdText) as { id?: string; user?: { id?: string }; message?: string; error?: string } | null;
   const createdUserId = createdBody?.id || createdBody?.user?.id
-    || await lookupCompatibilityUserId(fullStackUrl, tenantRef, adminKey, credentials.email);
+    || await lookupCompatibilityUserId(managementApiUrl, tenantRef, adminKey, credentials.email);
   if (!created.ok || !createdUserId) {
     throw new Error(`Unable to create compatibility user: status=${created.status} body=${compactBodyText(createdText)} fallback=${createdBody?.message || createdBody?.error || 'missing user'}`);
   }
@@ -248,13 +250,13 @@ async function requestProjectAuthUser(
 }
 
 async function lookupCompatibilityUserId(
-  fullStackUrl: string,
+  managementApiUrl: string,
   tenantRef: string,
   adminKey: string,
   email: string,
 ): Promise<string | null> {
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const response = await fetch(`${fullStackUrl}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {
+    const response = await fetch(`${managementApiUrl}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {
       headers: {
         accept: 'application/json',
         apikey: adminKey,

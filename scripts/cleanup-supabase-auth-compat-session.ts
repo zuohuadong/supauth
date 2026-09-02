@@ -3,13 +3,15 @@
 import { resolveSupabaseAdminKey, requiredSupabaseAdminKey } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
-const fullStackUrl = process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '') || runtimeUrl;
+const managementApiUrl = process.env.SUPABASE_URL?.trim().replace(/\/+$/, '')
+  || process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '')
+  || runtimeUrl;
 const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF');
 const adminKey = resolveSupabaseAdminKey(process.env, { fullStack: true }) || requiredSupabaseAdminKey();
 const userId = process.env.SUPABASE_COMPAT_USER_ID?.trim();
 
 if (userId) {
-  const deleted = await fetch(`${fullStackUrl}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users/${encodeURIComponent(userId)}`, {
+  const deleted = await fetch(`${managementApiUrl}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users/${encodeURIComponent(userId)}`, {
     method: 'DELETE',
     headers: {
       accept: 'application/json',
