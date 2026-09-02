@@ -74,6 +74,8 @@ describe('live clock skew prerequisite', () => {
       const sessionPreparation = workflow.indexOf('bun --use-system-ca run scripts/prepare-supabase-auth-compat-session.ts');
       if (sessionPreparation > -1) expect(prerequisite).toBeLessThan(sessionPreparation);
     }
+    const packageManifest = readFileSync('package.json', 'utf8');
+    expect(packageManifest).toContain('bun --use-system-ca test tests/integration/supabase-compat/oauth21.test.ts');
   });
 
   it('isolates self-hosted checkout from the runner SSH config', () => {
