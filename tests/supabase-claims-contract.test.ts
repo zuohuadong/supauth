@@ -108,9 +108,9 @@ describe('Supabase claims compatibility contract', () => {
     expect(sessionPreparation).toContain('verifiedRuntimeVersion(runtimeUrl, expectedCompatVersion)');
     expect(sessionPreparation).toContain('runtimeVersion === currentCompatVersion');
     expect(sessionPreparation).toContain("new Set(['v2.192.0', currentCompatVersion])");
-    expect(sessionPreparation).toContain("requiredEnv('SUPABASE_ANON_KEY')");
-    expect(sessionPreparation).toContain("requiredEnv('SUPABASE_SERVICE_ROLE_KEY')");
-    expect(sessionPreparation).toContain('createCompatibilityUser(runtimeUrl, serviceRoleKey, credentials, githubEnv)');
+    expect(sessionPreparation).toContain('resolveSupabasePublicKey(process.env, { fullStack: true })');
+    expect(sessionPreparation).toContain('resolveSupabaseAdminKey(process.env, { fullStack: true })');
+    expect(sessionPreparation).toContain('createCompatibilityUser(runtimeUrl, adminKey, credentials, githubEnv)');
     expect(sessionPreparation).toContain('const admin = createClient(runtimeUrl, serviceRoleKey');
     expect(sessionPreparation).toContain('admin.auth.admin.createUser({ ...credentials, email_confirm: true })');
     expect(sessionPreparation).toContain('email_confirm: true');
@@ -124,8 +124,15 @@ describe('Supabase claims compatibility contract', () => {
     for (const workflowPath of ['.github/workflows/ci.yml', '.github/workflows/live-compat.yml']) {
       const workflow = readFileSync(workflowPath, 'utf8');
       expect(workflow).toContain('MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}');
+      expect(workflow).toContain('SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}');
       expect(workflow).toContain('SUPABASE_ANON_KEY: ${{ secrets.LIVE_SUPABASE_ANON_KEY }}');
+      expect(workflow).toContain('SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}');
       expect(workflow).toContain('SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}');
+      expect(workflow).toContain('SUPABASE_FULLSTACK_URL: ${{ secrets.LIVE_SUPABASE_FULLSTACK_URL }}');
+      expect(workflow).toContain('SUPABASE_FULLSTACK_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_PUBLISHABLE_KEY || secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}');
+      expect(workflow).toContain('SUPABASE_FULLSTACK_ANON_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_ANON_KEY || secrets.LIVE_SUPABASE_ANON_KEY }}');
+      expect(workflow).toContain('SUPABASE_FULLSTACK_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SECRET_KEY || secrets.LIVE_SUPABASE_SECRET_KEY }}');
+      expect(workflow).toContain('SUPABASE_FULLSTACK_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_FULLSTACK_SERVICE_ROLE_KEY || secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}');
       expect(workflow).toContain('if: always()');
       expect(workflow).toContain('bun --use-system-ca run scripts/cleanup-supabase-auth-compat-session.ts');
     }
