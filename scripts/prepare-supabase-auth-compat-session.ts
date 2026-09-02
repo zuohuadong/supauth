@@ -3,19 +3,13 @@
 import { appendFileSync } from 'node:fs';
 import { createSupaCloudOAuthFetch } from '@supacloud/js';
 import { createClient } from '@supabase/supabase-js';
-import {
-  resolveSupabaseAdminKey,
-  resolveSupabasePublicKey,
-  requiredSupabaseAdminKey,
-  requiredSupabasePublicKey,
-} from './supabase-compat-env.js';
+import { requiredSupabaseAdminKey, requiredSupabasePublicKey } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
 const clientId = requiredEnv('OAUTH21_CLIENT_ID');
 const redirectUri = requiredEnv('OAUTH21_REDIRECT_URI');
-const publicKey = resolveSupabasePublicKey(process.env, { fullStack: true }) || requiredSupabasePublicKey();
-const adminKey = resolveSupabaseAdminKey(process.env, { fullStack: true })
-  || requiredSupabaseAdminKey();
+const publicKey = requiredSupabasePublicKey();
+const adminKey = requiredSupabaseAdminKey();
 const credentials = ephemeralCredentials(requiredEnv('SUPABASE_TEST_EMAIL'));
 const githubEnv = requiredEnv('GITHUB_ENV');
 const currentCompatVersion = 'v2.196.0';
