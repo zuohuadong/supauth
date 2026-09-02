@@ -110,9 +110,9 @@ describe('Supabase claims compatibility contract', () => {
     expect(sessionPreparation).toContain("new Set(['v2.192.0', currentCompatVersion])");
     expect(sessionPreparation).toContain('resolveSupabaseAdminKey(process.env, { fullStack: true })');
     expect(sessionPreparation).toContain('resolveSupabasePublicKey(process.env, { fullStack: true })');
-    expect(sessionPreparation).toContain('const managementApiUrl = process.env.SUPABASE_URL?.trim()');
+    expect(sessionPreparation).toContain('const managementApiUrl = process.env.MANAGEMENT_URL?.trim()');
     expect(sessionPreparation).toContain("const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF')");
-    expect(sessionPreparation).toContain("const managementApiUrl = process.env.SUPABASE_URL?.trim()");
+    expect(sessionPreparation).toContain("|| process.env.SUPABASE_URL?.trim()");
     expect(sessionPreparation).toContain("|| process.env.SUPABASE_FULLSTACK_URL?.trim()");
     expect(sessionPreparation).toContain('createCompatibilityUser(managementApiUrl, tenantRef, adminKey, credentials, githubEnv)');
     expect(sessionPreparation).toContain('requestProjectAuthUser(managementApiUrl, tenantRef, adminKey, \'POST\'');
@@ -122,12 +122,12 @@ describe('Supabase claims compatibility contract', () => {
     );
     const cleanupScript = readFileSync('scripts/cleanup-supabase-auth-compat-session.ts', 'utf8');
     expect(cleanupScript).toContain("const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF')");
-    expect(cleanupScript).toContain("const managementApiUrl = process.env.SUPABASE_URL?.trim()");
+    expect(cleanupScript).toContain("const managementApiUrl = process.env.MANAGEMENT_URL?.trim()");
     expect(cleanupScript).toContain('/v1/projects/${encodeURIComponent(tenantRef)}/auth/users/${encodeURIComponent(userId)}');
     for (const workflowPath of ['.github/workflows/ci.yml', '.github/workflows/live-compat.yml']) {
       const workflow = readFileSync(workflowPath, 'utf8');
       expect(workflow).toContain('SUPACLOUD_AUTH_AUTHORITY_REF: jbknfiwdgbatcxfbiopo');
-      expect(workflow).toContain('SUPABASE_URL: ${{ secrets.LIVE_SUPABASE_URL || secrets.LIVE_SUPABASE_FULLSTACK_URL }}');
+      expect(workflow).toContain('MANAGEMENT_URL: ${{ secrets.LIVE_MANAGEMENT_URL }}');
       expect(workflow).toContain('SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LIVE_SUPABASE_PUBLISHABLE_KEY }}');
       expect(workflow).toContain('SUPABASE_SECRET_KEY: ${{ secrets.LIVE_SUPABASE_SECRET_KEY }}');
       expect(workflow).toContain('SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LIVE_SUPABASE_SERVICE_ROLE_KEY }}');

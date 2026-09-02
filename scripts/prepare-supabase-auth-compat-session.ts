@@ -11,7 +11,8 @@ import {
 } from './supabase-compat-env.js';
 
 const runtimeUrl = requiredEnv('OAUTH_RUNTIME_URL').replace(/\/auth\/v1\/?$/, '').replace(/\/+$/, '');
-const managementApiUrl = process.env.SUPABASE_URL?.trim().replace(/\/+$/, '')
+const managementApiUrl = process.env.MANAGEMENT_URL?.trim().replace(/\/+$/, '')
+  || process.env.SUPABASE_URL?.trim().replace(/\/+$/, '')
   || process.env.SUPABASE_FULLSTACK_URL?.trim().replace(/\/+$/, '')
   || runtimeUrl;
 const tenantRef = requiredEnv('SUPACLOUD_AUTH_AUTHORITY_REF');
