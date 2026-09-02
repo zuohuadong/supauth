@@ -211,7 +211,8 @@ async function createCompatibilityUser(
     email_confirm: true,
   });
   const createdBody = await created.json().catch(() => null) as { id?: string; user?: { id?: string }; message?: string; error?: string } | null;
-  const createdUserId = createdBody?.id || createdBody?.user?.id;
+  const createdUserId = createdBody?.id || createdBody?.user?.id
+    || await lookupCompatibilityUserId(fullStackUrl, tenantRef, adminKey, credentials.email);
   if (!created.ok || !createdUserId) {
     throw new Error(`Unable to create compatibility user: ${(createdBody?.message || createdBody?.error || 'missing user')}`);
   }
@@ -243,6 +244,31 @@ async function requestProjectAuthUser(
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
+}
+
+async function lookupCompatibilityUserId(
+  fullStackUrl: string,
+  tenantRef: string,
+  adminKey: string,
+  email: string,
+): Promise<string | null> {
+  const response = await fetch(`${fullStackUrl}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {
+    headers: {
+      accept: 'application/json',
+      apikey: adminKey,
+      authorization: `Bearer ${adminKey}`,
+      'x-project-ref': tenantRef,
+    },
+  });
+  if (!response.ok) return null;
+  const payload = await response.json().catch(() => null) as { items?: Array<Record<string, unknown>>; users?: Array<Record<string, unknown>>; data?: Array<Record<string, unknown>> } | null;
+  const candidates = [
+    ...(Array.isArray(payload?.items) ? payload.items : []),
+    ...(Array.isArray(payload?.users) ? payload.users : []),
+    ...(Array.isArray(payload?.data) ? payload.data : []),
+  ];
+  const match = candidates.find((item) => typeof item?.id === 'string' && typeof item?.email === 'string' && item.email.toLowerCase() === email.toLowerCase());
+  return typeof match?.id === 'string' ? match.id : null;
 }
 
 async function verifiedRuntimeVersion(runtimeBaseUrl: string, expectedVersion: string): Promise<string> {
