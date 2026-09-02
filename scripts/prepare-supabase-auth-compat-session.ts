@@ -210,11 +210,12 @@ async function createCompatibilityUser(
     ...credentials,
     email_confirm: true,
   });
-  const createdBody = await created.json().catch(() => null) as { id?: string; user?: { id?: string }; message?: string; error?: string } | null;
+  const createdText = await created.text().catch(() => '');
+  const createdBody = parseJsonObject(createdText) as { id?: string; user?: { id?: string }; message?: string; error?: string } | null;
   const createdUserId = createdBody?.id || createdBody?.user?.id
     || await lookupCompatibilityUserId(fullStackUrl, tenantRef, adminKey, credentials.email);
   if (!created.ok || !createdUserId) {
-    throw new Error(`Unable to create compatibility user: ${(createdBody?.message || createdBody?.error || 'missing user')}`);
+    throw new Error(`Unable to create compatibility user: status=${created.status} body=${compactBodyText(createdText)} fallback=${createdBody?.message || createdBody?.error || 'missing user'}`);
   }
   console.log(`::add-mask::${credentials.email}`);
   console.log(`::add-mask::${credentials.password}`);
@@ -252,23 +253,49 @@ async function lookupCompatibilityUserId(
   adminKey: string,
   email: string,
 ): Promise<string | null> {
-  const response = await fetch(`${fullStackUrl}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {
-    headers: {
-      accept: 'application/json',
-      apikey: adminKey,
-      authorization: `Bearer ${adminKey}`,
-      'x-project-ref': tenantRef,
-    },
-  });
-  if (!response.ok) return null;
-  const payload = await response.json().catch(() => null) as { items?: Array<Record<string, unknown>>; users?: Array<Record<string, unknown>>; data?: Array<Record<string, unknown>> } | null;
-  const candidates = [
-    ...(Array.isArray(payload?.items) ? payload.items : []),
-    ...(Array.isArray(payload?.users) ? payload.users : []),
-    ...(Array.isArray(payload?.data) ? payload.data : []),
-  ];
-  const match = candidates.find((item) => typeof item?.id === 'string' && typeof item?.email === 'string' && item.email.toLowerCase() === email.toLowerCase());
-  return typeof match?.id === 'string' ? match.id : null;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const response = await fetch(`${fullStackUrl}/v1/projects/${encodeURIComponent(tenantRef)}/auth/users?email=${encodeURIComponent(email)}&limit=1&page=1`, {
+      headers: {
+        accept: 'application/json',
+        apikey: adminKey,
+        authorization: `Bearer ${adminKey}`,
+        'x-project-ref': tenantRef,
+      },
+    });
+    if (response.ok) {
+      const payload = await response.json().catch(() => null) as { items?: Array<Record<string, unknown>>; users?: Array<Record<string, unknown>>; data?: Array<Record<string, unknown>> } | null;
+      const candidates = [
+        ...(Array.isArray(payload?.items) ? payload.items : []),
+        ...(Array.isArray(payload?.users) ? payload.users : []),
+        ...(Array.isArray(payload?.data) ? payload.data : []),
+      ];
+      const match = candidates.find((item) => typeof item?.id === 'string' && typeof item?.email === 'string' && item.email.toLowerCase() === email.toLowerCase());
+      if (typeof match?.id === 'string') return match.id;
+    }
+    if (attempt < 5) await delay(250);
+  }
+  return null;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseJsonObject(text: string): Record<string, unknown> | null {
+  if (!text.trim()) return null;
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function compactBodyText(text: string): string {
+  const compacted = text.trim().replace(/\s+/g, ' ');
+  return compacted.length > 240 ? `${compacted.slice(0, 240)}…` : compacted || '<empty>';
 }
 
 async function verifiedRuntimeVersion(runtimeBaseUrl: string, expectedVersion: string): Promise<string> {
