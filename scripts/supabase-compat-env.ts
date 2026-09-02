@@ -46,6 +46,15 @@ export function resolveSupabaseManagementAdminKey(env: Environment = process.env
   return firstNonEmpty(env, MANAGEMENT_ADMIN_KEY_NAMES);
 }
 
+export function resolveManagementApiBases(baseUrl: string): string[] {
+  const normalized = baseUrl.trim().replace(/\/+$/, '');
+  if (!normalized) return [];
+  const alternate = normalized.endsWith('/api')
+    ? normalized.slice(0, -4)
+    : `${normalized}/api`;
+  return alternate === normalized ? [normalized] : [normalized, alternate];
+}
+
 export function requiredSupabasePublicKey(env: Environment = process.env): string {
   return requiredFirstNonEmpty(env, PUBLIC_KEY_NAMES);
 }

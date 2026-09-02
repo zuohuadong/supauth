@@ -5,6 +5,7 @@ import {
   resolveSupabaseAdminKey,
   resolveSupabasePublicKey,
   resolveSupabaseManagementAdminKey,
+  resolveManagementApiBases,
 } from '../scripts/supabase-compat-env.js';
 
 describe('Supabase compatibility key selection', () => {
@@ -75,6 +76,17 @@ describe('Supabase compatibility key selection', () => {
     };
 
     expect(resolveSupabaseManagementAdminKey(env)).toBe('fixture-legacy-admin');
+  });
+
+  it('tries both management API base shapes', () => {
+    expect(resolveManagementApiBases('https://auth.example.com')).toEqual([
+      'https://auth.example.com',
+      'https://auth.example.com/api',
+    ]);
+    expect(resolveManagementApiBases('https://auth.example.com/api')).toEqual([
+      'https://auth.example.com/api',
+      'https://auth.example.com',
+    ]);
   });
 
   it('fails with both accepted variable names when no key is configured', () => {
