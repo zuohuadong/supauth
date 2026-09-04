@@ -26,8 +26,8 @@ jobs:
         run: |
           set -euo pipefail
           case "$RELEASE_TAG" in
-            auth-server-v*)
-              echo "package=auth-server" >> "$GITHUB_OUTPUT"
+            auth-server-v*|supauth-v*|v*)
+              echo "package=supacloud-app" >> "$GITHUB_OUTPUT"
               ;;
             admin-console-v*)
               echo "package=admin-console" >> "$GITHUB_OUTPUT"
@@ -57,14 +57,18 @@ jobs:
           set -euo pipefail
 
           case "$PACKAGE" in
-            auth-server)
+            supacloud-app|auth-server)
               bun install
-              bun run --filter '@supauth/shared' build
-              (cd packages/auth-server && bun run build)
+              bun run build
+              bun run scripts/verify-supacloud-app-artifact.ts
               rm -rf release-assets
               mkdir -p release-assets
+              cp artifacts/supacloud-app/supacloud-app-manifest.json release-assets/supacloud-app-manifest.json
+              cp artifacts/supacloud-app/openapi.json release-assets/openapi.json
               cp packages/auth-server/dist/supacloud-function/supacloud-function.js release-assets/supacloud-function.js
+              tar -czf release-assets/supacloud-app-bundle.tar.gz -C artifacts/supacloud-app/function-bundle .
               tar -czf release-assets/auth-server-dist.tar.gz -C packages/auth-server/dist .
+              tar -czf release-assets/admin-console-build.tar.gz -C packages/admin-console/build .
               (cd release-assets && sha256sum * > SHA256SUMS)
               gh release upload "$RELEASE_TAG" release-assets/* --clobber
               ;;

@@ -209,3 +209,26 @@ Orchestration APIs:
 - OAuth response `scope` is consent/UserInfo metadata, not a database permission source; database authorization remains in RLS, helper functions, and versioned RBAC lookups.
 - See `docs/rbac-supabase-compatibility.md` for the RBAC migration baseline.
 - See `docs/application-authorization-kit.md` for the separate application-owned data-plane authorization packages and ownership boundary.
+
+## Architectural Decision: SupAuth and the @supacloud/app Framework
+
+### Context
+
+SupaCloud introduced `@supacloud/app`, an Angular/Nest-style metadata application framework providing `@Module`, `@Injectable`, `@Command`, `@Query`, `@Controller`, static compile-time DI via `@supacloud/compiler`, and agent tool export via `supacloud-cli app export-tools`.
+
+### Decision
+
+1. **SupAuth implements the SupaCloud-Native App Deployment Specification**:
+   - It packages as a standard SupaCloud project-scoped application declared in `supacloud-app-manifest.json`.
+   - HTTP execution is strictly `supacloud-functions-only` through `packages/auth-server/src/supacloud-function.ts`.
+   - Admin Console is statically hosted on SupaCloud Pages (`/admin/*`).
+   - Database migrations are additive overlay scripts applied through SupaCloud Management API.
+
+2. **SupAuth does NOT adopt the `@supacloud/app` Domain Framework**:
+   - **Distinct JTBD**: `@supacloud/app` is architected for domain-heavy business products (such as Xigu FA) requiring state machines, command-query transactions, outbox dispatch, and LLM tool exports. SupAuth is an infrastructure-level identity gateway, BFF, and hosted auth page renderer. Its security endpoints must not be exposed as agent tools.
+   - **Runtime Efficiency**: ElysiaJS provides zero-reflection, functional routing with native Bun / Edge Runtime performance and automatic OpenAPI generation. Wrapping low-latency proxy routes in class-based decorators and static DI modules would introduce unnecessary indirection without architectural benefit.
+   - **Stability and Blast Radius**: Central authentication cannot tolerate regressions in GoTrue compatibility, AAL2 MFA gates, or session boundaries.
+
+3. **Facade and Schema Convergence**:
+   - All platform-owned domains (Organizations, Roles, Permissions, Assignments, Audit, Webhook Delivery) are 100% delegated to SupaCloud Management API.
+   - Legacy temporary tables (`provisioning_records`, `application_secrets`) are retired from initial migrations and must not be used as authoritative state in new projects.
