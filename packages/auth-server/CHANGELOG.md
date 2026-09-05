@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.9](https://github.com/vibeunion/supauth/compare/auth-server-v0.8.8...auth-server-v0.8.9) (2026-09-05)
+
+
+### Bug Fixes
+
+* **compat:** harden GoTrue 2.196 release gates ([cac13e1](https://github.com/vibeunion/supauth/commit/cac13e157307785695b3235d8b8291f522b8e08f))
+* **compat:** harden GoTrue 2.196 release gates ([99d1963](https://github.com/vibeunion/supauth/commit/99d1963831f6f5a27681024b2b9de6413c7e635a))
+* handle latest file-type in supauth build ([9090496](https://github.com/vibeunion/supauth/commit/9090496f23d8ded2981780059e7db2f307f0e803))
+* harden auth server contracts and provisioning ([8360b32](https://github.com/vibeunion/supauth/commit/8360b32ab2548693ae64248bc53fe5e0c8a3ac55))
+
+
+### Miscellaneous Chores
+
+* **deps:** upgrade dependencies to latest and migrate svadmin ([378aa88](https://github.com/vibeunion/supauth/commit/378aa8880b6c7757d02c30dabe3034af9fb2b4e5))
+
 ## [0.8.8](https://github.com/vibeunion/supauth/compare/auth-server-v0.8.7...auth-server-v0.8.8) (2026-08-19)
 
 
