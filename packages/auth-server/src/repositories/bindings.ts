@@ -1,8 +1,18 @@
 // Application-Resource/Scope bindings repository
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
-import { applicationBindings, scopes } from '../db/schema.js';
+import { apiResources, applicationBindings, scopes } from '../db/schema.js';
+
+export class BindingIntegrityError extends Error {
+  constructor(
+    readonly code: 'resource_not_found' | 'scope_not_found',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'BindingIntegrityError';
+  }
+}
 
 /** List all bindings for an application */
 export async function listApplicationBindings(applicationId: string) {
@@ -37,6 +47,27 @@ export async function createBinding(data: {
   scopeId?: string;
 }) {
   const db = getDb();
+  const [resource] = await db.select({ id: apiResources.id })
+    .from(apiResources)
+    .where(eq(apiResources.id, data.resourceId))
+    .limit(1);
+  if (!resource) {
+    throw new BindingIntegrityError('resource_not_found', 'API resource was not found');
+  }
+
+  if (data.scopeId) {
+    const [scope] = await db.select({ id: scopes.id })
+      .from(scopes)
+      .where(and(
+        eq(scopes.id, data.scopeId),
+        eq(scopes.resourceId, data.resourceId),
+      ))
+      .limit(1);
+    if (!scope) {
+      throw new BindingIntegrityError('scope_not_found', 'Scope was not found under this API resource');
+    }
+  }
+
   const [binding] = await db.insert(applicationBindings).values({
     applicationId: data.applicationId,
     resourceId: data.resourceId,
@@ -46,9 +77,13 @@ export async function createBinding(data: {
 }
 
 /** Remove a binding */
-export async function deleteBinding(bindingId: string) {
+export async function deleteBinding(applicationId: string, bindingId: string): Promise<boolean> {
   const db = getDb();
-  await db.delete(applicationBindings).where(eq(applicationBindings.id, bindingId));
+  const [deleted] = await db.delete(applicationBindings).where(and(
+    eq(applicationBindings.id, bindingId),
+    eq(applicationBindings.applicationId, applicationId),
+  )).returning({ id: applicationBindings.id });
+  return Boolean(deleted);
 }
 
 /** Remove all bindings for an application */

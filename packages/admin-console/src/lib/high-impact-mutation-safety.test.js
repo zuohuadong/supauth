@@ -416,7 +416,14 @@ describe("high-impact admin mutation safety", () => {
       expect(body).toContain("beforeIds");
       expect(body).toContain("recordWebhookMutationUnknown(");
     }
-    expect(apiClient).not.toContain("Idempotency-Key");
+    for (const functionName of [
+      "testWebhook",
+      "replayWebhookDelivery",
+    ]) {
+      expect(functionBody(apiClient, functionName)).not.toContain(
+        "Idempotency-Key",
+      );
+    }
   });
 
   test("requires webhook create and rotation authority to be observable", async () => {

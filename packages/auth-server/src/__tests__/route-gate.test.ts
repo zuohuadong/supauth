@@ -3,6 +3,8 @@
 import { describe, it, expect, mock } from 'bun:test';
 
 describe('P0-29: Route Gate', () => {
+  const publicLookup = async () => [{ address: '93.184.216.34', family: 4 as const }];
+
   it('runIntegrationGate returns expected structure', async () => {
     // Mock fetch to simulate healthy responses
     const originalFetch = globalThis.fetch;
@@ -46,6 +48,7 @@ describe('P0-29: Route Gate', () => {
       'http://admin.test',
       'http://runtime.test',
       ['https://business.test'],
+      { lookup: publicLookup },
     );
 
     expect(result).toHaveProperty('timestamp');
@@ -92,6 +95,8 @@ describe('P0-29: Route Gate', () => {
       'test-project-conflict',
       'http://admin.test',
       'http://runtime.test',
+      [],
+      { lookup: publicLookup },
     );
 
     expect(result.allPassed).toBe(false);
@@ -115,6 +120,8 @@ describe('P0-29: Route Gate', () => {
       'test-project-normalized',
       'http://admin.test/',
       'http://runtime.test/',
+      [],
+      { lookup: publicLookup },
     );
 
     expect(result.envAudit.supauthUrl).toBe('http://admin.test');
@@ -126,5 +133,88 @@ describe('P0-29: Route Gate', () => {
     expect(seenUrls.some(url => url.includes('/v1/sign-in-experience/public'))).toBe(false);
 
     globalThis.fetch = originalFetch;
+  });
+
+  it('rejects private and loopback targets before any fetch', async () => {
+    const { validateRouteGateTarget } = await import('../routes/route-gate.js');
+
+    await expect(validateRouteGateTarget('http://127.0.0.1')).rejects.toThrow('resolves to');
+    await expect(validateRouteGateTarget('http://10.0.0.1')).rejects.toThrow('resolves to');
+    await expect(validateRouteGateTarget('http://[::1]')).rejects.toThrow('resolves to');
+    await expect(validateRouteGateTarget(
+      'https://public-looking.test',
+      async () => [{ address: '169.254.169.254', family: 4 as const }],
+    )).rejects.toThrow('resolves to');
+  });
+
+  it('rejects credentials, query strings, and non-http schemes', async () => {
+    const { validateRouteGateTarget } = await import('../routes/route-gate.js');
+    const lookup = async () => [{ address: '93.184.216.34', family: 4 as const }];
+
+    await expect(validateRouteGateTarget('https://user:pass@example.test', lookup)).rejects.toThrow('without credentials');
+    await expect(validateRouteGateTarget('https://example.test/?token=secret', lookup)).rejects.toThrow('query or fragment');
+    await expect(validateRouteGateTarget('file:///etc/passwd', lookup)).rejects.toThrow('http(s)');
+  });
+
+  it('ignores request-supplied target overrides and uses registered environment targets', async () => {
+    const { resolveRouteGateInput } = await import('../routes/route-gate.js');
+    const names = [
+      'SUPAOAUTH_ROUTE_GATE_ADMIN_URL',
+      'SUPAOAUTH_ROUTE_GATE_RUNTIME_URL',
+      'SUPAOAUTH_ROUTE_GATE_DOMAINS',
+    ] as const;
+    const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+    try {
+      process.env.SUPAOAUTH_ROUTE_GATE_ADMIN_URL = 'https://registered-admin.test';
+      process.env.SUPAOAUTH_ROUTE_GATE_RUNTIME_URL = 'https://registered-runtime.test';
+      process.env.SUPAOAUTH_ROUTE_GATE_DOMAINS = 'https://registered-business.test';
+
+      expect(resolveRouteGateInput({
+        supauth_url: 'http://127.0.0.1:9',
+        runtime_url: 'http://169.254.169.254',
+        domains: 'http://10.0.0.1',
+        project_ref: 'registered-project',
+      })).toEqual({
+        projectRef: 'registered-project',
+        supauthUrl: 'https://registered-admin.test',
+        runtimeUrl: 'https://registered-runtime.test',
+        extraDomains: ['https://registered-business.test'],
+      });
+    } finally {
+      for (const name of names) {
+        if (previous[name] === undefined) delete process.env[name];
+        else process.env[name] = previous[name];
+      }
+    }
+  });
+
+  it('does not follow redirects to private or cross-origin targets', async () => {
+    const originalFetch = globalThis.fetch;
+    const seenUrls: string[] = [];
+    globalThis.fetch = mock((input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      seenUrls.push(url);
+      return Promise.resolve(new Response('', {
+        status: 302,
+        headers: { location: 'http://169.254.169.254/latest/meta-data/' },
+      }));
+    }) as unknown as typeof fetch;
+
+    try {
+      const { runIntegrationGate } = await import('../routes/route-gate.js');
+      const result = await runIntegrationGate(
+        'test-project-redirect',
+        'https://admin.test',
+        'https://runtime.test',
+        [],
+        { lookup: publicLookup },
+      );
+
+      expect(result.allPassed).toBe(false);
+      expect(seenUrls.length).toBeGreaterThan(0);
+      expect(seenUrls.every(url => !url.includes('169.254.169.254'))).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

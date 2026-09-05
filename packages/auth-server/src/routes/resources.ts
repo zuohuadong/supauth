@@ -69,10 +69,13 @@ export const resourceRoutes = new Elysia({ prefix: '/v1/resources' })
     detail: { summary: 'Update scope under a resource', tags: ['Resources', 'Scopes'] },
   })
   .delete('/:resourceId/scopes/:scopeId', async ({ params }) => {
-    if (await resourceRepo.scopeHasBindings(params.scopeId)) {
+    const deletion = await resourceRepo.removeScope(params.resourceId, params.scopeId);
+    if (deletion === 'not_found') {
+      throw new ApiContractError(404, 'scope_not_found', 'Scope was not found under this API resource');
+    }
+    if (deletion === 'in_use') {
       throw new ApiContractError(409, 'scope_in_use', 'Scope is bound to one or more applications');
     }
-    await resourceRepo.removeScope(params.scopeId);
     await audit('scope.delete', 'scope', params.scopeId);
   }, {
     detail: { summary: 'Remove scope from resource', tags: ['Resources', 'Scopes'] },

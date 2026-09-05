@@ -86,6 +86,18 @@ describe('sdk-auth-ui bridge helpers', () => {
     expect(css).toContain('background-image');
     expect(css).toContain('.card { border-radius: 20px; }');
   });
+
+  it('ignores unsafe background URLs without allowing CSS boundary injection', () => {
+    expect(buildHostedBrandingCss({
+      backgroundUrl: 'javascript:alert(1)',
+    })).toBe('');
+    expect(buildHostedBrandingCss({
+      backgroundUrl: 'https://cdn.example.com/" ); color: red; /*',
+    })).not.toContain('color: red');
+    expect(buildHostedBrandingCss({
+      backgroundUrl: 'https://user:pass@cdn.example.com/bg.png',
+    })).toBe('');
+  });
 });
 
 describe('resolveSupabaseAuthUiConfig', () => {

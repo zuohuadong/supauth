@@ -60,7 +60,7 @@ export async function runRBACCompatibilityChecks(): Promise<RBACCheckResult[]> {
     check_id: 'rb-6-schema-isolation',
     status: 'pass',
     message: 'SupaOAuth overlay metadata lives in supaoauth schema, separate from GoTrue auth schema. SupaCloud-owned Organizations/RBAC/Audit/Webhooks are not duplicated on new installs.',
-    details: { overlay_tables: ['api_resources', 'scopes', 'sign_in_experience', 'application_sign_in_experience', 'connectors', 'application_bindings', 'user_consents', 'organization_templates', 'security_config', 'enterprise_sso_config', 'api_version_log', 'application_consent_settings', 'connector_factories', 'tenant_configs', 'account_provisioning_records'] },
+    details: { overlay_tables: ['api_resources', 'scopes', 'sign_in_experience', 'application_sign_in_experience', 'connectors', 'application_bindings', 'user_consents', 'organization_templates', 'organization_template_instantiations', 'security_config', 'enterprise_sso_config', 'api_version_log', 'application_consent_settings', 'connector_factories', 'tenant_configs', 'account_provisioning_records'] },
   });
 
   return results;

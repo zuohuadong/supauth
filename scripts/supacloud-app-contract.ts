@@ -117,6 +117,7 @@ export const SUPAOAUTH_TABLE_OWNERSHIP = {
   user_consents: { class: 'legacy-temporary', replacement: 'gotrue-oauth-grants' },
   oauth_consent_decisions: { class: 'supauth-overlay', domain: 'oauth_consent_decisions' },
   organization_templates: { class: 'supauth-overlay', domain: 'organization_templates' },
+  organization_template_instantiations: { class: 'supauth-overlay', domain: 'organization_templates' },
   provisioning_records: { class: 'legacy-temporary', replacement: 'supacloud-app-install-state' },
   security_config: { class: 'supauth-overlay', domain: 'compatibility_helpers' },
   enterprise_sso_config: { class: 'supauth-overlay', domain: 'enterprise_sso_mapping' },

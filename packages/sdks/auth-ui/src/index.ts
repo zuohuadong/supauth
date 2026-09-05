@@ -179,7 +179,19 @@ export function mapConnectorsToSupabaseProviders(connectors: PublicSignInConnect
 export function buildHostedBrandingCss(branding: HostedBranding) {
   const css: string[] = [];
   if (branding.backgroundUrl) {
-    css.push(`body { background-image: url("${branding.backgroundUrl}"); background-size: cover; background-position: center; }`);
+    try {
+      const backgroundUrl = new URL(branding.backgroundUrl);
+      if (['http:', 'https:'].includes(backgroundUrl.protocol)
+        && !backgroundUrl.username && !backgroundUrl.password && !backgroundUrl.hash) {
+        const escapedUrl = backgroundUrl.toString()
+          .replace(/\\/g, '\\\\')
+          .replace(/"/g, '\\"')
+          .replace(/[\r\n\f]/g, '\\A ');
+        css.push(`body { background-image: url("${escapedUrl}"); background-size: cover; background-position: center; }`);
+      }
+    } catch {
+      // Invalid branding URLs are ignored; custom CSS remains an explicit capability.
+    }
   }
   if (branding.customCss) {
     css.push(branding.customCss);

@@ -1198,9 +1198,14 @@ export class SupaOAuthClient {
     });
   }
 
-  instantiateOrgTemplate(templateId: string, data: { name: string; description?: string; creator_user_id: string }) {
+  instantiateOrgTemplate(
+    templateId: string,
+    data: { name: string; description?: string; creator_user_id: string },
+    idempotencyKey = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  ) {
     return this.request<unknown>(`/v1/org-templates/${pathSegment(templateId)}/instantiate`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(data),
     });
   }

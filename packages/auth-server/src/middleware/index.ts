@@ -4,6 +4,7 @@ import { Elysia } from 'elysia';
 import { enterRequestContext, getCurrentRequestId } from '../auth/request-context.js';
 import { SupaCloudApiError } from '../supacloud/adapter.js';
 import { ApiContractError } from '../utils/api-contract.js';
+import { runtimeEnv } from '../config/platform-env.js';
 
 const securityResponseHeaders = {
   'strict-transport-security': 'max-age=31536000; includeSubDomains',
@@ -38,6 +39,15 @@ function protectRawResponse(response: Response, requestId: string) {
   });
 }
 
+export function safeRequestUrl(request: Request): string {
+  try {
+    const url = new URL(request.url);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return request.url.split(/[?#]/, 1)[0] || '/';
+  }
+}
+
 export function generateRequestId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(8));
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -55,13 +65,13 @@ export const observabilityMiddleware = new Elysia({ name: 'observability' })
     applySecurityResponseHeaders(set.headers);
     set.headers['x-request-id'] = requestId;
 
-    if (process.env.LOG_LEVEL === 'debug') {
+    if (runtimeEnv('LOG_LEVEL') === 'debug') {
       console.log(JSON.stringify({
         level: 'info',
         msg: 'request',
         request_id: requestId,
         method: request.method,
-        url: request.url,
+        url: safeRequestUrl(request),
         duration_ms: Math.round(duration),
       }));
     }
@@ -77,7 +87,7 @@ export const observabilityMiddleware = new Elysia({ name: 'observability' })
       msg: 'request_error',
       request_id: requestId,
       method: request.method,
-      url: request.url,
+      url: safeRequestUrl(request),
       error: (error as Error).message,
       duration_ms: Math.round(duration),
     }));

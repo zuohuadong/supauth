@@ -2,6 +2,7 @@
 
 import { Elysia } from 'elysia';
 import { currentAdminRequestContext } from '../auth/request-context.js';
+import { runtimeEnv } from '../config/platform-env.js';
 import * as secRepo from '../repositories/security-config.js';
 import * as auditRepo from '../repositories/audit.js';
 import { validatedSecurityConfigUpdate } from './security-config-input.js';
@@ -24,7 +25,7 @@ export const securityConfigRoutes = new Elysia({ prefix: '/v1/security-config' }
     const update = validatedSecurityConfigUpdate(body, {
       currentAdminEmail: principal?.email,
       authorizationSource: principal?.authorization_source,
-      runtimeEnvironment: process.env.NODE_ENV || 'development',
+      runtimeEnvironment: runtimeEnv('NODE_ENV') || 'development',
     });
     const updatedConfig = await secRepo.updateSecurityConfig(update);
     await audit('security_config.update', 'security_config', updatedConfig.id, update);
