@@ -1,6 +1,7 @@
 // Bun runs this module directly; the Svelte check does not include Bun's test globals.
 // @ts-nocheck
-import { expect, test } from 'bun:test';
+import { afterEach, beforeEach, expect, test } from 'bun:test';
+import { resetAdminAuthRuntimeForTests } from './auth.js';
 
 function deferredRequest() {
   let resolveRequest;
@@ -17,6 +18,14 @@ async function waitFor(predicate, message) {
   }
   throw new Error(message);
 }
+
+beforeEach(() => {
+  resetAdminAuthRuntimeForTests();
+});
+
+afterEach(() => {
+  resetAdminAuthRuntimeForTests();
+});
 
 test('invalidates a callback exchange before remote logout can complete', async () => {
   const originalFetch = globalThis.fetch;
