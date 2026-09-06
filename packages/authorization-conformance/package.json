@@ -1,6 +1,6 @@
 {
   "name": "@supauth/authorization-conformance",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Pure conformance checks for SupAuth authorization adapters and generated RLS",
   "type": "module",
   "sideEffects": false,

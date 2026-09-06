@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.6](https://github.com/vibeunion/supauth/compare/sdk-typescript-v0.5.5...sdk-typescript-v0.5.6) (2026-09-05)
+
+
+### Bug Fixes
+
+* harden auth server contracts and provisioning ([8360b32](https://github.com/vibeunion/supauth/commit/8360b32ab2548693ae64248bc53fe5e0c8a3ac55))
+
+
+### Miscellaneous Chores
+
+* **deps:** upgrade dependencies to latest and migrate svadmin ([378aa88](https://github.com/vibeunion/supauth/commit/378aa8880b6c7757d02c30dabe3034af9fb2b4e5))
+
 ## [0.5.5](https://github.com/vibeunion/supauth/compare/sdk-typescript-v0.5.4...sdk-typescript-v0.5.5) (2026-08-18)
 
 
