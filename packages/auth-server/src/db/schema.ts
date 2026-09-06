@@ -230,6 +230,23 @@ export const organizationTemplates = supaoauth.table('organization_templates', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const organizationTemplateInstantiations = supaoauth.table('organization_template_instantiations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  idempotencyKey: varchar('idempotency_key', { length: 255 }).notNull(),
+  templateId: uuid('template_id').notNull(),
+  requestHash: varchar('request_hash', { length: 64 }).notNull(),
+  status: varchar('status', { length: 32 }).notNull().default('pending'),
+  organizationId: varchar('organization_id', { length: 255 }),
+  result: jsonb('result').$type<Record<string, unknown> | null>(),
+  errorDetails: jsonb('error_details').$type<Record<string, unknown> | null>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('uq_org_template_instantiations_idempotency_key').on(t.idempotencyKey),
+  index('idx_org_template_instantiations_template_id').on(t.templateId),
+  index('idx_org_template_instantiations_status').on(t.status),
+]);
+
 // ─── Provisioning Records (P0-20) ────────────────────────────────────────
 // Tracks SupaCloud project provisioning state for idempotent reconcile.
 export const provisioningRecords = supaoauth.table('provisioning_records', {

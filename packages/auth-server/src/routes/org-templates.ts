@@ -63,6 +63,7 @@ export const orgTemplateRoutes = new Elysia({ prefix: '/v1/org-templates' })
       templateScopes: templateInput.template_scopes,
       isDefault: templateInput.is_default,
     });
+    if (!updated) return new Response('Not found', { status: 404 });
     await audit('org_template.update', 'org_template', params.templateId);
     return updated;
   }, {
@@ -88,23 +89,28 @@ export const orgTemplateRoutes = new Elysia({ prefix: '/v1/org-templates' })
   })
 
   // ─── Instantiate org from template ───
-  .post('/:templateId/instantiate', async ({ params, body }) => {
+  .post('/:templateId/instantiate', async ({ params, body, request }) => {
     const data = body as { name: string; description?: string; creator_user_id: string };
     const result = await templateRepo.instantiateFromTemplate(params.templateId, {
       name: data.name,
       description: data.description,
       creatorUserId: data.creator_user_id,
+    }, {
+      idempotencyKey: request.headers.get('idempotency-key') || request.headers.get('x-request-id') || undefined,
     });
-    await audit('org_template.instantiate', 'organization', result.org.id, {
-      template_id: params.templateId,
-      org_name: data.name,
-      roles_created: result.rolesCreated,
-    });
-    await fireWebhook('organization.created_from_template', {
-      org_id: result.org.id,
-      template_id: params.templateId,
-    });
-    return result;
+    const { replayed, ...response } = result;
+    if (!replayed) {
+      await audit('org_template.instantiate', 'organization', result.org.id, {
+        template_id: params.templateId,
+        org_name: data.name,
+        roles_created: result.rolesCreated,
+      });
+      await fireWebhook('organization.created_from_template', {
+        org_id: result.org.id,
+        template_id: params.templateId,
+      });
+    }
+    return response;
   }, {
     detail: {
       summary: 'Create organization from template',

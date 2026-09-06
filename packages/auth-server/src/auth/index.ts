@@ -17,7 +17,7 @@ import { enterAdminRequestContext } from './request-context.js';
 import { parseAdminSsoRequireAal2 } from './admin-sso-aal2-policy.js';
 
 // Env-var fallbacks: used before migration has run, or when DB is unreachable.
-const ENV_ADMIN_AUTH_MODE = (process.env.ADMIN_AUTH_MODE || 'auto').toLowerCase();
+const ENV_ADMIN_AUTH_MODE = (runtimeEnv('ADMIN_AUTH_MODE') || 'auto').toLowerCase();
 const ENV_SSO_ISSUER = trimTrailingSlash(runtimeEnv('ADMIN_SSO_ISSUER') || '');
 const ENV_SSO_CLIENT_ID = runtimeEnv('ADMIN_SSO_CLIENT_ID') || '';
 const ENV_SSO_AUDIENCES = resolveSsoAudiences({
@@ -29,9 +29,9 @@ const ENV_SSO_JWKS_URI = runtimeEnv('ADMIN_SSO_JWKS_URI') || (ENV_SSO_ISSUER ? `
 const ENV_ALLOWED_EMAILS = parseCsv(runtimeEnv('ADMIN_SSO_ALLOWED_EMAILS')).map((email) => email.toLowerCase());
 const ENV_ALLOWED_DOMAINS = parseCsv(runtimeEnv('ADMIN_SSO_ALLOWED_DOMAINS')).map((domain) => domain.toLowerCase());
 const ENV_SSO_ACCESS_POLICY = { requireAal2: parseAdminSsoRequireAal2(runtimeEnv('ADMIN_SSO_REQUIRE_AAL2')) };
-const ENV_RATE_LIMIT_RPM = parseInt(process.env.ADMIN_RATE_LIMIT_RPM || '300', 10);
-const ENV_MAX_LOGIN_ATTEMPTS = parseInt(process.env.ADMIN_MAX_LOGIN_ATTEMPTS || '10', 10);
-const ENV_LOGIN_LOCKOUT_SEC = parseInt(process.env.ADMIN_LOGIN_LOCKOUT_SEC || '900', 10);
+const ENV_RATE_LIMIT_RPM = parseInt(runtimeEnv('ADMIN_RATE_LIMIT_RPM') || '300', 10);
+const ENV_MAX_LOGIN_ATTEMPTS = parseInt(runtimeEnv('ADMIN_MAX_LOGIN_ATTEMPTS') || '10', 10);
+const ENV_LOGIN_LOCKOUT_SEC = parseInt(runtimeEnv('ADMIN_LOGIN_LOCKOUT_SEC') || '900', 10);
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const SECURITY_CONFIG_CACHE_MS = 10_000;
@@ -195,7 +195,7 @@ function requestIp(headers: Record<string, string | undefined>): string {
 async function tokenAuthAllowed(): Promise<boolean> {
   const mode = await effectiveAdminAuthMode();
   if (mode === 'sso') return false;
-  if (process.env.NODE_ENV === 'production') return false;
+  if (runtimeEnv('NODE_ENV') === 'production') return false;
   return true;
 }
 
@@ -524,7 +524,7 @@ export const authRoutes = new Elysia({ prefix: '/v1/auth' })
     }
 
     const tokenOk = await tokenAuthAllowed();
-    const adminToken = process.env.ADMIN_TOKEN || '';
+    const adminToken = runtimeEnv('ADMIN_TOKEN') || '';
     if (tokenOk && adminToken && token === adminToken) {
       const sessionToken = generateSessionToken();
       const session: AdminSession = {
@@ -567,6 +567,6 @@ async function ssoMessage(): Promise<string | null> {
   if (configurationError) return configurationError;
   const mode = await effectiveAdminAuthMode();
   if (mode === 'sso') return 'Password login is disabled; use SSO';
-  if (process.env.NODE_ENV === 'production') return 'Token login is disabled in production; use SSO';
+  if (runtimeEnv('NODE_ENV') === 'production') return 'Token login is disabled in production; use SSO';
   return null;
 }

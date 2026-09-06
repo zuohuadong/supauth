@@ -1,6 +1,6 @@
 {
   "name": "@supauth/authorization-core",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Dependency-free authorization contracts and in-memory decisions for SupAuth applications",
   "type": "module",
   "sideEffects": false,

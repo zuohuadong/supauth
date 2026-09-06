@@ -1,6 +1,6 @@
 {
   "name": "@supauth/shared",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Shared schemas and public types for SupaOAuth SDK packages",
   "type": "module",
   "sideEffects": false,

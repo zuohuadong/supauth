@@ -828,6 +828,11 @@ export function deleteOrgTemplate(templateId) {
 export function instantiateOrgTemplate(templateId, data) {
   return request(`/v1/org-templates/${pathSegment(templateId)}/instantiate`, {
     method: "POST",
+    headers: {
+      "Idempotency-Key":
+        globalThis.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    },
     body: JSON.stringify(data),
   });
 }

@@ -6,6 +6,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, 
 import { and, eq, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { accountProvisioningRecords } from '../db/schema.js';
+import { runtimeEnv } from '../config/platform-env.js';
 import { logAudit } from './audit.js';
 
 const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
@@ -88,10 +89,10 @@ export function externalIdLookupCandidates(value: string): string[] {
 }
 
 function claimSecret(): string {
-  const secret = process.env.ACCOUNT_CLAIM_SECRET
-    || process.env.ADMIN_TOKEN
-    || process.env.SUPACLOUD_MASTER_TOKEN
-    || process.env.SUPACLOUD_INTERNAL_TOKEN
+  const secret = runtimeEnv('ACCOUNT_CLAIM_SECRET')
+    || runtimeEnv('ADMIN_TOKEN')
+    || runtimeEnv('SUPACLOUD_MASTER_TOKEN')
+    || runtimeEnv('SUPACLOUD_INTERNAL_TOKEN')
     || '';
   if (secret.length < 16) {
     throw new Error('ACCOUNT_CLAIM_SECRET, ADMIN_TOKEN, or SUPACLOUD_MASTER_TOKEN is required for account claim password encryption');

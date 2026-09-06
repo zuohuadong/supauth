@@ -1,6 +1,6 @@
 // API Resources and Scopes repository — backed by SupaCloud Postgres
 
-import { eq } from 'drizzle-orm';
+import { and, eq, notExists } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { apiResources, applicationBindings, scopes } from '../db/schema.js';
 
@@ -25,25 +25,27 @@ export async function getResource(id: string) {
 
 export async function createResource(data: { name: string; indicator: string; description?: string; scopes?: { name: string; description?: string }[] }) {
   const db = getDb();
-  const [resource] = await db.insert(apiResources).values({
-    name: data.name,
-    indicator: data.indicator,
-    description: data.description || null,
-  }).returning();
+  return db.transaction(async (transaction) => {
+    const [resource] = await transaction.insert(apiResources).values({
+      name: data.name,
+      indicator: data.indicator,
+      description: data.description || null,
+    }).returning();
 
-  const createdScopes: typeof scopes.$inferSelect[] = [];
-  if (data.scopes?.length) {
-    const scopeRows = await db.insert(scopes).values(
-      data.scopes.map(s => ({
-        name: s.name,
-        description: s.description || null,
-        resourceId: resource.id,
-      }))
-    ).returning();
-    createdScopes.push(...scopeRows);
-  }
+    const createdScopes: typeof scopes.$inferSelect[] = [];
+    if (data.scopes?.length) {
+      const scopeRows = await transaction.insert(scopes).values(
+        data.scopes.map(s => ({
+          name: s.name,
+          description: s.description || null,
+          resourceId: resource.id,
+        }))
+      ).returning();
+      createdScopes.push(...scopeRows);
+    }
 
-  return { ...resource, scopes: createdScopes };
+    return { ...resource, scopes: createdScopes };
+  });
 }
 
 export async function updateResource(id: string, data: { name?: string; indicator?: string; description?: string }) {
@@ -71,9 +73,25 @@ export async function addScope(resourceId: string, data: { name: string; descrip
   return scope;
 }
 
-export async function removeScope(scopeId: string) {
+export async function removeScope(resourceId: string, scopeId: string): Promise<'deleted' | 'not_found' | 'in_use'> {
   const db = getDb();
-  await db.delete(scopes).where(eq(scopes.id, scopeId));
+  const [deleted] = await db.delete(scopes).where(and(
+    eq(scopes.id, scopeId),
+    eq(scopes.resourceId, resourceId),
+    notExists(
+      db.select({ id: applicationBindings.id })
+        .from(applicationBindings)
+        .where(eq(applicationBindings.scopeId, scopeId)),
+    ),
+  )).returning({ id: scopes.id });
+  if (deleted) return 'deleted';
+
+  const [scope] = await db.select({ id: scopes.id }).from(scopes).where(and(
+    eq(scopes.id, scopeId),
+    eq(scopes.resourceId, resourceId),
+  )).limit(1);
+  if (!scope) return 'not_found';
+  return 'in_use';
 }
 
 export async function updateScope(scopeId: string, data: { name?: string; description?: string }) {

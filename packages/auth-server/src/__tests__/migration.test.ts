@@ -17,6 +17,9 @@ import {
   MIGRATION_V13_SQL,
   MIGRATION_V14_SQL,
   MIGRATION_V15_SQL,
+  MIGRATION_V16_SQL,
+  MIGRATION_V17_SQL,
+  MIGRATION_V18_SQL,
 } from '../db/migrate.js';
 
 const __dirname2 = dirname(fileURLToPath(import.meta.url));
@@ -75,10 +78,65 @@ describe('Migration V5 — provisioning unique constraint', () => {
 });
 
 describe('Hosted migration chain', () => {
-  it('grants the Function role only SupaOAuth overlay access', () => {
+  it('grants the Function role only explicit runtime overlay tables', () => {
     expect(MIGRATION_V7_SQL).toContain('GRANT USAGE ON SCHEMA supaoauth');
-    expect(MIGRATION_V7_SQL).toContain('ALL TABLES IN SCHEMA supaoauth');
+    expect(MIGRATION_V7_SQL).toContain("'api_resources'");
+    expect(MIGRATION_V7_SQL).toContain("'account_provisioning_records'");
+    expect(MIGRATION_V7_SQL).toContain("'oauth_consent_decisions'");
+    expect(MIGRATION_V7_SQL).toContain("'api_version_log'");
+    expect(MIGRATION_V7_SQL).toContain("'user_consents'");
+    expect(MIGRATION_V7_SQL).not.toMatch(/GRANT\s+.*ON\s+ALL\s+TABLES/i);
+    expect(MIGRATION_V7_SQL).not.toMatch(/GRANT\s+.*ON\s+ALL\s+SEQUENCES/i);
+    expect(MIGRATION_V7_SQL).not.toMatch(/GRANT\s+.*ON\s+ALL\s+FUNCTIONS/i);
     expect(MIGRATION_V7_SQL).not.toMatch(/GRANT\s+.*\s+ON\s+(?:ALL\s+TABLES\s+IN\s+SCHEMA\s+)?auth\b/i);
+  });
+
+  it('repairs historical broad grants and blocks future default privilege expansion', () => {
+    expect(MIGRATION_V7_SQL).toContain('REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA supaoauth');
+    expect(MIGRATION_V7_SQL).toContain('REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA supaoauth');
+    expect(MIGRATION_V7_SQL).toContain('REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA supaoauth');
+    expect(MIGRATION_V7_SQL).toContain('ALTER DEFAULT PRIVILEGES IN SCHEMA supaoauth REVOKE ALL PRIVILEGES ON TABLES');
+    expect(MIGRATION_V7_SQL).toContain('ALTER DEFAULT PRIVILEGES IN SCHEMA supaoauth REVOKE ALL PRIVILEGES ON SEQUENCES');
+    expect(MIGRATION_V7_SQL).toContain('ALTER DEFAULT PRIVILEGES IN SCHEMA supaoauth REVOKE ALL PRIVILEGES ON FUNCTIONS');
+  });
+
+  it('keeps sensitive account claiming and append-only records explicit', () => {
+    const accountGrantStart = MIGRATION_V7_SQL.indexOf('read_write_tables TEXT[]');
+    const accountGrantEnd = MIGRATION_V7_SQL.indexOf('insert_only_tables TEXT[]');
+    const accountGrantSql = MIGRATION_V7_SQL.slice(accountGrantStart, accountGrantEnd);
+    expect(accountGrantSql).toContain("'account_provisioning_records'");
+    expect(accountGrantSql).not.toContain("'api_resources'");
+    expect(accountGrantSql).not.toContain('DELETE');
+    expect(MIGRATION_V7_SQL).toContain('Account claiming reads the encrypted initial password');
+    expect(MIGRATION_V7_SQL).toContain('GRANT INSERT ON TABLE supaoauth.%I TO %I');
+    expect(MIGRATION_V7_SQL).toContain('GRANT SELECT ON TABLE supaoauth.%I TO %I');
+    expect(MIGRATION_V7_SQL).toContain('GRANT SELECT, INSERT ON TABLE supaoauth.%I TO %I');
+    expect(MIGRATION_V7_SQL).not.toContain("'application_secrets'");
+    expect(MIGRATION_V7_SQL).not.toContain("'webhook_deliveries'");
+    expect(MIGRATION_V7_SQL).not.toContain("'webhooks'");
+  });
+
+  it('ships a forward-only repair for projects that already recorded V7', () => {
+    expect(MIGRATION_V16_SQL).toBe(MIGRATION_V7_SQL);
+    expect(HOSTED_MIGRATIONS.find((migration) => migration.name === 'supauth-overlay-function-access-repair-v16')).toEqual({
+      name: 'supauth-overlay-function-access-repair-v16',
+      sql: MIGRATION_V16_SQL,
+    });
+    expect(migrateSrc).toContain('forward-only, idempotent copy');
+  });
+
+  it('deduplicates existing defaults before enforcing one default template', () => {
+    expect(MIGRATION_V17_SQL).toContain('ROW_NUMBER() OVER');
+    expect(MIGRATION_V17_SQL).toContain('rank > 1');
+    expect(MIGRATION_V17_SQL).toContain('uq_organization_templates_single_default');
+    expect(MIGRATION_V17_SQL).toContain('WHERE is_default = true');
+  });
+
+  it('persists organization template instantiation idempotency state', () => {
+    expect(MIGRATION_V18_SQL).toContain('organization_template_instantiations');
+    expect(MIGRATION_V18_SQL).toContain('uq_org_template_instantiations_idempotency_key');
+    expect(MIGRATION_V18_SQL).toContain('request_hash');
+    expect(MIGRATION_V18_SQL).toContain('recovery_required');
   });
 
   it('retires empty legacy webhook tables and blocks non-empty tables without CASCADE', () => {
@@ -109,6 +167,9 @@ describe('Hosted migration chain', () => {
       { name: 'supauth-overlay-rls-permission-projection-v13', sql: MIGRATION_V13_SQL },
       { name: 'supauth-overlay-connector-runtime-kind-v14', sql: MIGRATION_V14_SQL },
       { name: 'supauth-overlay-connector-runtime-kind-repair-v15', sql: MIGRATION_V15_SQL },
+      { name: 'supauth-overlay-function-access-repair-v16', sql: MIGRATION_V16_SQL },
+      { name: 'supauth-overlay-organization-template-default-v17', sql: MIGRATION_V17_SQL },
+      { name: 'supauth-overlay-organization-template-idempotency-v18', sql: MIGRATION_V18_SQL },
     ]);
     expect(migrateSrc).toContain('for (const migration of HOSTED_MIGRATIONS)');
     expect(migrateSrc).toContain('await sql.unsafe(migration.sql)');

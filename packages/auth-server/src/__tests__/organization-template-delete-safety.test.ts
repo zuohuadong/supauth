@@ -10,7 +10,15 @@ import {
 
 const deleteTemplate = mock(async (): Promise<'deleted' | 'protected' | 'not_found'> => 'deleted');
 const createTemplate = mock(async () => ({ id: 'template-new', name: 'New template' }));
-const updateTemplate = mock(async () => ({ id: 'template-one' }));
+const updateTemplate = mock(async () => ({ id: 'template-one' } as { id: string } | undefined));
+const instantiateFromTemplate = mock(async (): Promise<{
+  org: { id: string };
+  rolesCreated: number;
+  replayed?: boolean;
+}> => ({
+  org: { id: 'org-one' },
+  rolesCreated: 0,
+}));
 const logAudit = mock(async () => ({}));
 const dispatchEvent = mock(async () => undefined);
 
@@ -21,10 +29,7 @@ mock.module('../repositories/organization-templates.js', () => ({
   createTemplate,
   updateTemplate,
   deleteTemplate,
-  instantiateFromTemplate: mock(async () => ({
-    org: { id: 'org-one' },
-    rolesCreated: 0,
-  })),
+  instantiateFromTemplate,
 }));
 mock.module('../repositories/audit.js', () => ({ logAudit }));
 mock.module('../repositories/webhook-delivery.js', () => ({
@@ -50,6 +55,7 @@ describe('organization template deletion safety', () => {
   beforeEach(() => {
     createTemplate.mockClear();
     updateTemplate.mockClear();
+    instantiateFromTemplate.mockClear();
     deleteTemplate.mockClear();
     deleteTemplate.mockResolvedValue('deleted');
     logAudit.mockClear();
@@ -143,6 +149,49 @@ describe('organization template deletion safety', () => {
     expect(dispatchEvent).toHaveBeenCalledTimes(1);
   });
 
+  it('returns 404 and skips audit when updating a missing template', async () => {
+    updateTemplate.mockResolvedValueOnce(undefined);
+
+    const response = await app.handle(templateMutationRequest('PUT', {
+      description: 'Missing template',
+    }));
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe('Not found');
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat audit or webhook side effects when an instantiation is replayed', async () => {
+    instantiateFromTemplate.mockResolvedValueOnce({
+      org: { id: 'org-one' },
+      rolesCreated: 1,
+      replayed: true,
+    });
+
+    const response = await app.handle(new Request(
+      'http://localhost/v1/org-templates/template-one/instantiate',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'template-request-one',
+        },
+        body: JSON.stringify({
+          name: 'Existing organization',
+          creator_user_id: 'user-one',
+        }),
+      },
+    ));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      org: { id: 'org-one' },
+      rolesCreated: 1,
+    });
+    expect(logAudit).not.toHaveBeenCalled();
+    expect(dispatchEvent).not.toHaveBeenCalled();
+  });
+
   it('returns a friendly conflict and skips side effects for the default template', async () => {
     deleteTemplate.mockResolvedValueOnce('protected');
 
@@ -185,5 +234,34 @@ describe('organization template deletion safety', () => {
 
     expect(repositorySource).toContain('eq(organizationTemplates.isDefault, false)');
     expect(repositorySource).toContain('.returning({ id: organizationTemplates.id })');
+  });
+
+  it('keeps default writes serialized and remote instantiation compensatable', () => {
+    const repositorySource = readFileSync(
+      new URL('../repositories/organization-templates.ts', import.meta.url),
+      'utf8',
+    );
+
+    expect(repositorySource).toContain('db.transaction');
+    expect(repositorySource).toContain('pg_advisory_xact_lock');
+    expect(repositorySource).toContain('ORGANIZATION_TEMPLATE_DEFAULT_UNIQUE_INDEX_SQL');
+    expect(repositorySource).toContain('adapter.deleteRole');
+    expect(repositorySource).toContain('adapter.deleteOrganization');
+  });
+
+  it('keeps resource and binding mutations scoped to their parent identities', () => {
+    const resourcesSource = readFileSync(
+      new URL('../repositories/resources.ts', import.meta.url),
+      'utf8',
+    );
+    const bindingsSource = readFileSync(
+      new URL('../repositories/bindings.ts', import.meta.url),
+      'utf8',
+    );
+
+    expect(resourcesSource).toContain('db.transaction');
+    expect(resourcesSource).toContain('eq(scopes.resourceId, resourceId)');
+    expect(bindingsSource).toContain('eq(scopes.resourceId, data.resourceId)');
+    expect(bindingsSource).toContain('eq(applicationBindings.applicationId, applicationId)');
   });
 });

@@ -1,3 +1,5 @@
+import { runtimeEnv } from '../config/platform-env.js';
+
 type GoTrueEnvironment = Record<string, string | undefined>;
 
 function trimTrailingSlash(value: string): string {
@@ -23,11 +25,12 @@ export function buildGoTrueLogoutUrl(baseUrl: string): string {
   return parsed.toString();
 }
 
-export function resolveGoTrueLogoutUrl(env: GoTrueEnvironment = process.env): string {
-  const baseUrl = env.GOTRUE_LOGOUT_URL
-    || env.OAUTH_RUNTIME_URL
-    || env.SUPACLOUD_RUNTIME_URL
-    || env.SUPABASE_URL
+export function resolveGoTrueLogoutUrl(env?: GoTrueEnvironment): string {
+  const read = (name: string) => env ? env[name] : runtimeEnv(name);
+  const baseUrl = read('GOTRUE_LOGOUT_URL')
+    || read('OAUTH_RUNTIME_URL')
+    || read('SUPACLOUD_RUNTIME_URL')
+    || read('SUPABASE_URL')
     || '';
   return buildGoTrueLogoutUrl(baseUrl);
 }

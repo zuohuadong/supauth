@@ -330,11 +330,24 @@ export const applicationRoutes = new Elysia({ prefix: '/v1/applications' })
 
   .post('/:appId/bindings', async ({ params, body }) => {
     const data = body as { resource_id: string; scope_id?: string };
-    const binding = await bindingRepo.createBinding({
-      applicationId: params.appId,
-      resourceId: data.resource_id,
-      scopeId: data.scope_id,
-    });
+    let binding;
+    try {
+      binding = await bindingRepo.createBinding({
+        applicationId: params.appId,
+        resourceId: data.resource_id,
+        scopeId: data.scope_id,
+      });
+    } catch (error) {
+      if (error instanceof bindingRepo.BindingIntegrityError) {
+        throw new ApiContractError(
+          404,
+          error.code,
+          error.message,
+          { resource_id: data.resource_id, scope_id: data.scope_id },
+        );
+      }
+      throw error;
+    }
     await audit('binding.create', 'binding', binding.id, { app_id: params.appId });
     return binding;
   }, {
@@ -342,7 +355,10 @@ export const applicationRoutes = new Elysia({ prefix: '/v1/applications' })
   })
 
   .delete('/:appId/bindings/:bindingId', async ({ params }) => {
-    await bindingRepo.deleteBinding(params.bindingId);
+    const deleted = await bindingRepo.deleteBinding(params.appId, params.bindingId);
+    if (!deleted) {
+      throw new ApiContractError(404, 'binding_not_found', 'Application binding was not found');
+    }
     await audit('binding.delete', 'binding', params.bindingId);
   }, {
     detail: { summary: 'Delete application binding', tags: ['Applications', 'Bindings'] },

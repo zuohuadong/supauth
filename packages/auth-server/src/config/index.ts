@@ -55,9 +55,9 @@ export function loadConfig(): ServerConfig {
   }
 
   _config = {
-    port: parseInt(process.env.PORT || '4010', 10),
-    host: process.env.HOST || '0.0.0.0',
-    nodeEnv: process.env.NODE_ENV || 'development',
+    port: parseInt(runtimeEnv('PORT') || '4010', 10),
+    host: runtimeEnv('HOST') || '0.0.0.0',
+    nodeEnv: runtimeEnv('NODE_ENV') || 'development',
     supacloudApiUrl: env(
       'SUPACLOUD_API_URL',
       'SUPACLOUD_INTERNAL_API_URL',

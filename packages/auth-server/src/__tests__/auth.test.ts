@@ -17,6 +17,7 @@ const {
   resolveSsoAdminAccess,
   resolveSsoAudiences,
   verifyAdminBearer,
+  authRoutes,
 } = await import('../auth/index.js');
 const { parseAdminSsoRequireAal2 } = await import('../auth/admin-sso-aal2-policy.js');
 const { loadConfig } = await import('../config/index.js');
@@ -56,6 +57,29 @@ describe('Auth module — exported functions', () => {
       const result = await verifyAdminBearer({ authorization: 'Bearer ' });
       expect(result).toEqual({ status: 'unauthenticated' });
     });
+  });
+
+  it('accepts the Function-scoped admin token alias', async () => {
+    const previousToken = process.env.ADMIN_TOKEN;
+    const previousScopedToken = process.env.EDGEFN_SUPAUTH_ADMIN_TOKEN;
+    try {
+      delete process.env.ADMIN_TOKEN;
+      process.env.EDGEFN_SUPAUTH_ADMIN_TOKEN = 'scoped-admin-token';
+
+      const response = await authRoutes.handle(new Request('http://localhost/v1/auth/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: 'scoped-admin-token' }),
+      }));
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ success: true });
+    } finally {
+      if (previousToken === undefined) delete process.env.ADMIN_TOKEN;
+      else process.env.ADMIN_TOKEN = previousToken;
+      if (previousScopedToken === undefined) delete process.env.EDGEFN_SUPAUTH_ADMIN_TOKEN;
+      else process.env.EDGEFN_SUPAUTH_ADMIN_TOKEN = previousScopedToken;
+    }
   });
 });
 

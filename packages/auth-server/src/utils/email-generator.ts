@@ -14,7 +14,7 @@ export interface EmailGeneratorOptions {
 
 const DEFAULT_OPTIONS: EmailGeneratorOptions = {
   domain: runtimeEnv('SUPAUTH_ACCOUNT_PROVISIONING_EMAIL_DOMAIN')
-    || process.env.ACCOUNT_PROVISIONING_EMAIL_DOMAIN
+    || runtimeEnv('ACCOUNT_PROVISIONING_EMAIL_DOMAIN')
     || 'example.com',
   suffixSeparator: '.',
   suffixMinDigits: 4,

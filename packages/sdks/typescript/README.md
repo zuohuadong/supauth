@@ -63,7 +63,7 @@ The SDK provides methods for all SupaOAuth Management API endpoints:
 | Sign-in Experience | `getSignInExperience()`, `resolveSignInExperience()`, `resolvePublicSignInExperience()`, `getPublicPhrases()`, `updateSignInExperience()`, `getApplicationSignInExperience()`, `updateApplicationSignInExperience()`, `deleteApplicationSignInExperience()` |
 | Auth Config | `getAuthConfig()`, `updateAuthConfig()` |
 | Organization Templates | `listOrgTemplates()`, `createOrgTemplate()`, `instantiateOrgTemplate()` |
-| Webhooks | `listWebhooks()`, `createWebhook()`, `getWebhook()`, `updateWebhook()`, `deleteWebhook()`, `rotateWebhookSecret()`, `listWebhookLogs()`, `testWebhook()`, `replayWebhook()`, `listWebhookEvents()` |
+| Webhooks | `listWebhooks()`, `createWebhook()`, `getWebhook()`, `updateWebhook()`, `deleteWebhook()`, `rotateWebhookSecret()`, `listWebhookLogs()`, `testWebhook()`, `replayWebhookDelivery(webhookId, deliveryId)`, `listWebhookEvents()` |
 | Audit | `listAuditLogs()` |
 | Sync | `syncUserMetadata()`, `syncOrgMetadata()` |
 | Tenant Config | `listTenantConfigs()`, `getTenantConfig()`, `upsertTenantConfig()`, `deleteTenantConfig()`, `checkTenantDomain()` |

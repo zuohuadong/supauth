@@ -68,7 +68,7 @@ const DEFAULT_ACCOUNT_CLAIM_CONFIG: AccountClaimConfig = {
 function defaultProvisioningEmailDomain(): string {
   return (
     runtimeEnv('SUPAUTH_ACCOUNT_PROVISIONING_EMAIL_DOMAIN')
-    || process.env.ACCOUNT_PROVISIONING_EMAIL_DOMAIN
+    || runtimeEnv('ACCOUNT_PROVISIONING_EMAIL_DOMAIN')
     || 'example.com'
   ).replace(/^@/, '').toLowerCase();
 }

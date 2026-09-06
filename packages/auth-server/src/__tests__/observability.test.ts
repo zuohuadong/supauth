@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, afterEach, mock } from 'bun:test';
+import { Elysia } from 'elysia';
 import { withRequestContext } from '../auth/request-context.js';
 
 describe('Observability — getCurrentRequestId', () => {
@@ -57,5 +58,36 @@ describe('Observability — request ID format', () => {
     }
     // 100 random IDs should all be unique
     expect(ids.size).toBe(100);
+  });
+});
+
+describe('Observability — URL privacy', () => {
+  afterEach(() => {
+    mock.restore();
+    delete process.env.LOG_LEVEL;
+  });
+
+  it('does not log OAuth query or fragment components', async () => {
+    process.env.LOG_LEVEL = 'debug';
+    const { observabilityMiddleware } = await import('../middleware/index.js');
+    const info = mock(() => {});
+    const originalLog = console.log;
+    console.log = info;
+    try {
+      const app = new Elysia()
+        .use(observabilityMiddleware)
+        .get('/oauth/callback', () => ({ ok: true }));
+      const response = await app.handle(new Request(
+        'https://auth.example.test/oauth/callback?code=secret-code&state=secret-state',
+      ));
+
+      expect(response.status).toBe(200);
+      const entry = JSON.stringify(info.mock.calls);
+      expect(entry).toContain('https://auth.example.test/oauth/callback');
+      expect(entry).not.toContain('secret-code');
+      expect(entry).not.toContain('secret-state');
+    } finally {
+      console.log = originalLog;
+    }
   });
 });
