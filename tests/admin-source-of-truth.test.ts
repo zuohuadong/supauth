@@ -5,7 +5,15 @@ type RootPackageManifest = {
   scripts: Record<string, string>;
 };
 
+type AdminPackageManifest = {
+  scripts: Record<string, string>;
+  devDependencies: Record<string, string>;
+};
+
 const rootPackage = JSON.parse(readFileSync('package.json', 'utf8')) as RootPackageManifest;
+const adminPackage = JSON.parse(
+  readFileSync('packages/admin-console/package.json', 'utf8'),
+) as AdminPackageManifest;
 const developmentLauncher = readFileSync('scripts/dev.ts', 'utf8');
 const applicationBuildScript = readFileSync('scripts/build-supacloud-app.ts', 'utf8');
 const readme = readFileSync('README.md', 'utf8');
@@ -30,6 +38,13 @@ describe('Admin Console source-of-truth contract', () => {
       "bun run --filter '@supauth/admin-console' check",
       "bun run --filter '@supauth/admin-console' build",
     ]);
+  });
+
+  it('keeps the TypeScript native compiler required by the Admin check', () => {
+    expect(adminPackage.scripts.check).toContain('--tsgo-experimental-api');
+    expect(adminPackage.scripts.typecheck).toContain('--tsgo-experimental-api');
+    expect(adminPackage.devDependencies.typescript).toBe('~6.0.3');
+    expect(adminPackage.devDependencies['@typescript/native']).toBe('npm:typescript@^7.0.2');
   });
 
   it('documents the package as the only executable Admin source in both languages', () => {

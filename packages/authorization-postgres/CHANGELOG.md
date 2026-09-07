@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.3](https://github.com/vibeunion/supauth/compare/authorization-postgres-v0.4.2...authorization-postgres-v0.4.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* **compat:** harden GoTrue 2.196 release gates ([cac13e1](https://github.com/vibeunion/supauth/commit/cac13e157307785695b3235d8b8291f522b8e08f))
+* **compat:** harden GoTrue 2.196 release gates ([99d1963](https://github.com/vibeunion/supauth/commit/99d1963831f6f5a27681024b2b9de6413c7e635a))
+
+
+### Miscellaneous Chores
+
+* **deps:** upgrade dependencies to latest and migrate svadmin ([378aa88](https://github.com/vibeunion/supauth/commit/378aa8880b6c7757d02c30dabe3034af9fb2b4e5))
+
 ## [0.4.2](https://github.com/vibeunion/supauth/compare/authorization-postgres-v0.4.1...authorization-postgres-v0.4.2) (2026-08-18)
 
 

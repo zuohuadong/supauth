@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.7](https://github.com/vibeunion/supauth/compare/admin-console-v0.7.6...admin-console-v0.7.7) (2026-09-05)
+
+
+### Bug Fixes
+
+* harden auth server contracts and provisioning ([8360b32](https://github.com/vibeunion/supauth/commit/8360b32ab2548693ae64248bc53fe5e0c8a3ac55))
+
+
+### Miscellaneous Chores
+
+* **deps:** upgrade dependencies to latest and migrate svadmin ([378aa88](https://github.com/vibeunion/supauth/commit/378aa8880b6c7757d02c30dabe3034af9fb2b4e5))
+
 ## [0.7.6](https://github.com/vibeunion/supauth/compare/admin-console-v0.7.5...admin-console-v0.7.6) (2026-08-19)
 
 

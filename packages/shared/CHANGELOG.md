@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.3](https://github.com/vibeunion/supauth/compare/shared-v0.7.2...shared-v0.7.3) (2026-09-05)
+
+
+### Miscellaneous Chores
+
+* **deps:** upgrade dependencies to latest and migrate svadmin ([378aa88](https://github.com/vibeunion/supauth/commit/378aa8880b6c7757d02c30dabe3034af9fb2b4e5))
+
 ## [0.7.2](https://github.com/vibeunion/supauth/compare/shared-v0.7.1...shared-v0.7.2) (2026-08-18)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "@supauth/authorization-postgres",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Reviewable PostgreSQL and Supabase RLS generators for application-owned authorization",
   "type": "module",
   "sideEffects": false,
